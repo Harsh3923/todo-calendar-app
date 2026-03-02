@@ -13,6 +13,7 @@ export default function App() {
   const [booting, setBooting] = useState(true);
   const navigate = useNavigate();
 
+  
   const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "dark");
 
   useEffect(() => {
@@ -57,16 +58,12 @@ export default function App() {
 
   return (
     <div className="appShell">
-      <Navbar user={user} onLogout={logout} />
-
-      <button
-        className="settingsBtn"
-        onClick={toggleTheme}
-        title={`Switch to ${theme === "dark" ? "Light" : "Dark"} mode`}
-        aria-label="Toggle theme"
-      >
-        ⚙️
-      </button>
+      <Navbar
+      user={user}
+      onLogout={logout}
+      onToggleTheme={toggleTheme}
+      theme={theme}
+    />
 
       <Routes>
         <Route path="/" element={<CalendarPage user={user} />} />
