@@ -1,3 +1,4 @@
+import React from "react";
 import { Route, Routes, Navigate, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import Navbar from "./components/Navbar.jsx";
