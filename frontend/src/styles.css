@@ -6,6 +6,34 @@
   --border: rgba(255,255,255,0.08);
 }
 
+/* Light theme overrides */
+[data-theme="light"] {
+  --bg: #f5f7fb;
+  --card: #ffffff;
+  --text: #0b1220;
+  --muted: #5b677a;
+  --border: rgba(10,18,32,0.12);
+}
+.settingsBtn {
+  position: fixed;
+  top: 74px;            /* below navbar */
+  right: 16px;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 18px;
+  display: grid;
+  place-items: center;
+  z-index: 200;
+}
+
+.settingsBtn:hover {
+  filter: brightness(1.06);
+}
 * { box-sizing: border-box; }
 body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; background: var(--bg); color: var(--text); }
 a { color: inherit; text-decoration: none; }

@@ -1,6 +1,7 @@
 import React from "react";
-import { Route, Routes, Navigate, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { Route, Routes, Navigate, useNavigate } from "react-router-dom";
+
 import Navbar from "./components/Navbar.jsx";
 import CalendarPage from "./pages/CalendarPage.jsx";
 import AuthPage from "./pages/AuthPage.jsx";
@@ -11,6 +12,17 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [booting, setBooting] = useState(true);
   const navigate = useNavigate();
+
+  const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "dark");
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("theme", theme);
+  }, [theme]);
+
+  function toggleTheme() {
+    setTheme((t) => (t === "dark" ? "light" : "dark"));
+  }
 
   useEffect(() => {
     async function boot() {
@@ -46,6 +58,16 @@ export default function App() {
   return (
     <div className="appShell">
       <Navbar user={user} onLogout={logout} />
+
+      <button
+        className="settingsBtn"
+        onClick={toggleTheme}
+        title={`Switch to ${theme === "dark" ? "Light" : "Dark"} mode`}
+        aria-label="Toggle theme"
+      >
+        ⚙️
+      </button>
+
       <Routes>
         <Route path="/" element={<CalendarPage user={user} />} />
         <Route path="/auth" element={<AuthPage onSuccess={onAuthSuccess} />} />
