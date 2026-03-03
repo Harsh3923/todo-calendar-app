@@ -391,3 +391,50 @@ input:focus, textarea:focus, select:focus {
 }
 
 [data-theme="light"] .desc { color: rgba(15, 23, 42, 0.85); }
+/*styling search feature*/
+.globalSearchRow { margin-bottom: 12px; position: relative; }
+
+.searchWrapTop{
+  display:flex; align-items:center; gap:8px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.03);
+}
+
+.searchDropdown{
+  position:absolute;
+  top: 52px;
+  left: 0;
+  right: 0;
+  z-index: 80;
+  border: 1px solid var(--border);
+  background: var(--card);
+  border-radius: 14px;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.searchItem{
+  width:100%;
+  text-align:left;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  padding: 10px 12px;
+  cursor: pointer;
+  display:flex;
+  flex-direction:column;
+  gap: 6px;
+}
+.searchItem:hover{ background: var(--hover); }
+
+.searchItemTitle{ display:flex; align-items:center; gap:10px; }
+.searchItemText{ font-weight: 800; }
+
+.searchItemMeta{ display:flex; gap:8px; align-items:center; font-size: 12px; color: var(--muted); }
+
+.searchEmpty{
+  padding: 12px;
+  color: var(--muted);
+}
