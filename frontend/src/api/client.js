@@ -33,10 +33,11 @@ export const api = {
   register: (email, password) => request("/api/auth/register", { method: "POST", body: { email, password } }),
   login: (email, password) => request("/api/auth/login", { method: "POST", body: { email, password } }),
   me: () => request("/api/auth/me"),
-
+  setOccurrenceStatus: (id, date, status) => request(`/api/tasks/${id}/set-occurrence-status`, {method: "POST", body: { date, status },}),
   listTasks: (date) => request(date ? `/api/tasks?date=${encodeURIComponent(date)}` : "/api/tasks"),
   getTask: (id) => request(`/api/tasks/${id}`),
   createTask: (payload) => request("/api/tasks", { method: "POST", body: payload }),
   updateTask: (id, payload) => request(`/api/tasks/${id}`, { method: "PUT", body: payload }),
   deleteTask: (id) => request(`/api/tasks/${id}`, { method: "DELETE" }),
+  toggleComplete: (id, date) => request(`/api/tasks/${id}/toggle-complete`, { method: "POST", body: { date } }),
 };
