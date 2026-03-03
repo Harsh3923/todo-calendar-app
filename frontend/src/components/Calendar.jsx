@@ -25,6 +25,7 @@ export default function Calendar({
   onNext,
   DraggableTaskChip,
   DroppableDayCell,
+  getStatusOnDate, // ✅ use this now
 }) {
   const first = startOfMonth(monthDate);
   const last = endOfMonth(monthDate);
@@ -47,15 +48,16 @@ export default function Calendar({
   // fallbacks if not provided
   const DayCell = DroppableDayCell
     ? DroppableDayCell
-    : ({ dayIso, children, className, onClick }) => (
+    : ({ children, className, onClick }) => (
         <button className={`calCell ${className || ""}`} onClick={onClick} type="button">
           {children}
         </button>
       );
 
-  const Chip = DraggableTaskChip
-    ? DraggableTaskChip
-    : ({ task, children }) => <div className={`chip ${task.status}`}>{children}</div>;
+  // default chip if you aren't using DnD wrapper
+  const FallbackChip = ({ task, children, className = "" }) => (
+    <div className={`chip ${className}`}>{children}</div>
+  );
 
   return (
     <div className="calendarCard">
@@ -93,13 +95,39 @@ export default function Calendar({
               <div className="calDayNum">{d.getDate()}</div>
 
               <div className="calChips">
-                {list.slice(0, 2).map((t) => (
-                  <Chip key={t._id} task={t}>
-                    <span className={t.recurrence && t.recurrence !== "none" ? "recurring" : ""}>
-                      {t.title}{t.recurrence && t.recurrence !== "none" ? " ⟳" : ""}
-                    </span>
-                  </Chip>
-                ))}
+                {list.slice(0, 2).map((t) => {
+                  const recurring = t.recurrence && t.recurrence !== "none";
+                  const status =
+                    typeof getStatusOnDate === "function"
+                      ? getStatusOnDate(t, iso)
+                      : t.status; // fallback
+
+                  const done = status === "done";
+
+                  // chip should carry status + recurring class
+                  const chipClass = `${status} ${recurring ? "recurring" : ""}`.trim();
+
+                  const ChipWrapper = DraggableTaskChip
+                    ? ({ children }) => (
+                        <DraggableTaskChip task={t}>
+                          <div className={`chip ${chipClass}`}>{children}</div>
+                        </DraggableTaskChip>
+                      )
+                    : ({ children }) => (
+                        <FallbackChip task={t} className={chipClass}>
+                          {children}
+                        </FallbackChip>
+                      );
+
+                  return (
+                    <ChipWrapper key={t._id}>
+                      <span className={`chipText ${done ? "strike" : ""}`}>
+                        {t.title}
+                        {recurring ? " ⟳" : ""}
+                      </span>
+                    </ChipWrapper>
+                  );
+                })}
 
                 {list.length > 2 && <div className="chip more">+{list.length - 2} more</div>}
               </div>
