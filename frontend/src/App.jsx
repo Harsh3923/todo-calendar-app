@@ -8,13 +8,13 @@ import AuthPage from "./pages/AuthPage.jsx";
 import TaskDetailPage from "./pages/TaskDetailPage.jsx";
 import { api, setToken, getToken } from "./api/client.js";
 import CompletedTasksPage from "./pages/CompletedTasksPage.jsx";
+import DashboardPage from "./pages/DashboardPage.jsx";
 
 export default function App() {
   const [user, setUser] = useState(null);
   const [booting, setBooting] = useState(true);
   const navigate = useNavigate();
 
-  
   const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "dark");
 
   useEffect(() => {
@@ -60,14 +60,15 @@ export default function App() {
   return (
     <div className="appShell">
       <Navbar
-      user={user}
-      onLogout={logout}
-      onToggleTheme={toggleTheme}
-      theme={theme}
-    />
+        user={user}
+        onLogout={logout}
+        onToggleTheme={toggleTheme}
+        theme={theme}
+      />
 
       <Routes>
         <Route path="/completed" element={<CompletedTasksPage user={user} />} />
+        <Route path="/dashboard" element={<DashboardPage user={user} />} />
         <Route path="/" element={<CalendarPage user={user} />} />
         <Route path="/auth" element={<AuthPage onSuccess={onAuthSuccess} />} />
         <Route path="/tasks/:id" element={<TaskDetailPage user={user} />} />
