@@ -23,6 +23,9 @@ export default function Navbar({ user, onLogout, onToggleTheme, theme }) {
 
         {user ? (
           <>
+            <button className="btn secondary" onClick={() => navigate("/completed")}>
+              Completed
+            </button>
             <button
               className="btn"
               onClick={() => navigate("/", { state: { openCreate: true } })}
