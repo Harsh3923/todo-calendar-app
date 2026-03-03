@@ -177,7 +177,63 @@ a { color: inherit; text-decoration: none; }
 .chip.todo { background: rgba(255,255,255,0.03); }
 .chip.doing { background: rgba(255, 204, 0, 0.10); }
 .chip.done { background: rgba(60, 220, 160, 0.10); }
+.chipText { display: inline-block; }
+.taskCheck {
+  width: 16px;
+  height: 16px;
+  accent-color: #22c55e; /* modern green */
+  cursor: pointer;
+}
+/* lighter title when doing */
+.lightTitle {
+  font-weight: 600;   /* instead of 900 */
+  opacity: 0.75;
+}
 
+/* Yellow circle button */
+.stateDot {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 204, 0, 0.55);
+  background: transparent;
+  cursor: pointer;
+  margin-right: 8px;
+}
+
+.stateDot.doing {
+  background: rgba(255, 204, 0, 0.9);
+  border-color: rgba(255, 204, 0, 0.9);
+}
+
+/* Green checkbox button */
+.stateCheck {
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  border: 2px solid rgba(34, 197, 94, 0.55);
+  background: transparent;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  font-weight: 900;
+  margin-right: 10px;
+  line-height: 1;
+}
+
+.stateCheck.done {
+  background: rgba(34, 197, 94, 0.9);
+  border-color: rgba(34, 197, 94, 0.9);
+  color: white;
+}
+.strike {
+  text-decoration: line-through;
+  opacity: 0.65;
+}
+.chip.done {
+  opacity: 0.8;
+}
 /* List */
 .listHeader { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .empty { padding: 10px 2px; color: var(--muted); }
