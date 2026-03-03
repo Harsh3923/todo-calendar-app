@@ -20,6 +20,8 @@ router.post("/", async (req, res, next) => {
       time,
       priority,
       status,
+      recurrence,
+      recurrenceInterval
     });
 
     res.status(201).json(task);
