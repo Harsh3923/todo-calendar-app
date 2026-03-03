@@ -115,11 +115,11 @@ function statusOnDate(task, iso) {
   return "todo";
 }
 
-// pick a “best date” to jump to when selecting a search result
+// pick a “best date” to jump 
 function bestDateForTask(task, todayISO) {
   if (!isRecurring(task)) return task.date;
 
-  // try today..today+45 for the next occurrence
+  //  today..today+45 for the next occurrence
   let cur = todayISO;
   for (let i = 0; i < 45; i++) {
     if (occursOn(task, cur)) return cur;
@@ -138,12 +138,12 @@ export default function CalendarPage({ user }) {
   const [error, setError] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
 
-  // ✅ top search bar (global)
+  // top search bar (global)
   const [searchQ, setSearchQ] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const searchWrapRef = useRef(null);
 
-  // ✅ optional filters ONLY for selected-day list (keeps your bottom list strict)
+  //  optional filters ONLY for selected-day list (keeps your bottom list strict)
   const [priorityFilter, setPriorityFilter] = useState("all"); // all|low|med|high
   const [statusFilter, setStatusFilter] = useState("all"); // all|todo|doing|done
 
@@ -224,7 +224,7 @@ export default function CalendarPage({ user }) {
     });
   }, [selectedTasks, selectedISO, statusFilter, priorityFilter]);
 
-  // ✅ dropdown search matches (global across all tasks)
+  // dropdown search matches (global across all tasks)
   const searchMatches = useMemo(() => {
     const q = searchQ.trim().toLowerCase();
     if (!q) return [];
@@ -304,7 +304,7 @@ async function setDoneForSelectedDate(task) {
 }
 
 async function clearStateForSelectedDate(task) {
-  // optional helper if you ever want to reset to todo
+  // optional helper 
   if (!user) return;
   try {
     if (isRecurring(task)) {
@@ -317,7 +317,7 @@ async function clearStateForSelectedDate(task) {
     setError(e.message);
   }
 }
-  // ✅ drag drop handler (moves base date)
+  // drag drop handler (moves base date)
   async function handleDragEnd(event) {
     const { active, over } = event;
     if (!over) return;
@@ -348,13 +348,13 @@ async function clearStateForSelectedDate(task) {
     setSearchOpen(false);
     setSearchQ("");
 
-    // open detail (you can remove this if you prefer just jumping)
+    // open detail 
     navigate(`/tasks/${task._id}`);
   }
 
   return (
     <div className="page">
-      {/* ✅ Global search directly under navbar */}
+      {/* Global search directly under navbar */}
       <div className="globalSearchRow" ref={searchWrapRef}>
         <div className="searchWrapTop">
           <span className="searchIcon">🔎</span>
@@ -441,7 +441,7 @@ async function clearStateForSelectedDate(task) {
         />
       </DndContext>
 
-      {/* ✅ Bottom stays strictly “tasks for selected date” */}
+      {/*Bottom stays “tasks for selected date” */}
       <div className="listCard">
         <div className="listHeader">
           <h2>Tasks for {selectedISO}</h2>

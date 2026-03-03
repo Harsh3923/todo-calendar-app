@@ -8,7 +8,7 @@ export default function TaskModal({ open, onClose, onSubmit, initial, dateLocked
   const [priority, setPriority] = useState("med");
   const [status, setStatus] = useState("todo");
 
-  // ✅ NEW: recurrence
+  // NEW recurrence
   const [recurrence, setRecurrence] = useState("none");
 
   useEffect(() => {
@@ -21,13 +21,13 @@ export default function TaskModal({ open, onClose, onSubmit, initial, dateLocked
     setPriority(initial?.priority || "med");
     setStatus(initial?.status || "todo");
 
-    // ✅ load recurrence from initial
+    // load recurrence from initial
     setRecurrence(initial?.recurrence || "none");
   }, [open, initial]);
 
   if (!open) return null;
 
-  const isEditing = Boolean(initial?._id); // ✅ better than "initial ? ..."
+  const isEditing = Boolean(initial?._id); 
 
   function submit(e) {
     e.preventDefault();

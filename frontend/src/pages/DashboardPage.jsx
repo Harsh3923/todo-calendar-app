@@ -295,7 +295,7 @@ export default function DashboardPage({ user }) {
       return 4;
     }
 
-    // Build GitHub-style columns (weeks) with Sunday start
+    // GitHub-style columns (weeks) with Sunday start
     const start = heatmapDays[0];
     const padLeft = weekdayOf(start); // how many blanks before first day to align Sunday row start
     const padded = [];

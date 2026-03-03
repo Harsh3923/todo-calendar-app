@@ -25,7 +25,7 @@ export default function Calendar({
   onNext,
   DraggableTaskChip,
   DroppableDayCell,
-  getStatusOnDate, // ✅ use this now
+  getStatusOnDate, 
 }) {
   const first = startOfMonth(monthDate);
   const last = endOfMonth(monthDate);
@@ -54,7 +54,7 @@ export default function Calendar({
         </button>
       );
 
-  // default chip if you aren't using DnD wrapper
+  // default chip 
   const FallbackChip = ({ task, children, className = "" }) => (
     <div className={`chip ${className}`}>{children}</div>
   );
@@ -104,7 +104,7 @@ export default function Calendar({
 
                   const done = status === "done";
 
-                  // chip should carry status + recurring class
+                  // chip carries status + recurring class
                   const chipClass = `${status} ${recurring ? "recurring" : ""}`.trim();
 
                   const ChipWrapper = DraggableTaskChip
