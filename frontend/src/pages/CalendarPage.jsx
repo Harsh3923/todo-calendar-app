@@ -48,7 +48,54 @@ function DroppableDayCell({ dayIso, children, className = "", onClick }) {
     </button>
   );
 }
+function parseISO(iso) {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+function sameISO(a, b) {
+  return a === b;
+}
+function daysBetween(aISO, bISO) {
+  const a = parseISO(aISO);
+  const b = parseISO(bISO);
+  const ms = b.getTime() - a.getTime();
+  return Math.floor(ms / (1000 * 60 * 60 * 24));
+}
+function weekdayOf(iso) {
+  return parseISO(iso).getDay(); // 0=Sun
+}
+function dayOfMonth(iso) {
+  return parseISO(iso).getDate();
+}
 
+// returns true if task "occurs" on targetISO
+function occursOn(task, targetISO) {
+  const r = task.recurrence || "none";
+  if (r === "none") return sameISO(task.date, targetISO);
+
+  // recurrence only happens on/after the start date
+  if (targetISO < task.date) return false;
+
+  if (r === "daily") {
+    const diff = daysBetween(task.date, targetISO);
+    return diff % (task.recurrenceInterval || 1) === 0;
+  }
+
+  if (r === "weekly") {
+    // weekly on same weekday as the start date
+    if (weekdayOf(task.date) !== weekdayOf(targetISO)) return false;
+    const diff = daysBetween(task.date, targetISO);
+    const weeks = Math.floor(diff / 7);
+    return weeks % (task.recurrenceInterval || 1) === 0;
+  }
+
+  if (r === "monthly") {
+    // monthly on same day-of-month as the start date
+    return dayOfMonth(task.date) === dayOfMonth(targetISO);
+  }
+
+  return false;
+}
 export default function CalendarPage({ user }) {
   const [monthDate, setMonthDate] = useState(() => new Date());
   const [selectedISO, setSelectedISO] = useState(() => toISODate(new Date()));
@@ -92,13 +139,29 @@ export default function CalendarPage({ user }) {
   }, [user]);
 
   const tasksByDate = useMemo(() => {
-    const map = {};
-    for (const t of tasks) {
-      map[t.date] = map[t.date] || [];
-      map[t.date].push(t);
+  const map = {};
+
+  // Build all dates shown in the current month grid
+  const year = monthDate.getFullYear();
+  const month = monthDate.getMonth(); // 0-based
+  const first = new Date(year, month, 1);
+  const last = new Date(year, month + 1, 0);
+
+  // include all days of the month
+  for (let d = 1; d <= last.getDate(); d++) {
+    const iso = toISODate(new Date(year, month, d));
+    map[iso] = [];
+  }
+
+  // Place tasks into every date they occur on (in this month)
+  for (const t of tasks) {
+    for (const iso of Object.keys(map)) {
+      if (occursOn(t, iso)) map[iso].push(t);
     }
-    return map;
-  }, [tasks]);
+  }
+
+  return map;
+}, [tasks, monthDate]);
 
   const selectedTasks = useMemo(() => {
     return (tasksByDate[selectedISO] || [])
