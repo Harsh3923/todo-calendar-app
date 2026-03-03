@@ -1,7 +1,7 @@
 import React from "react";
 import { DndContext, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Calendar, { toISODate } from "../components/Calendar.jsx";
 import TaskModal from "../components/TaskModal.jsx";
@@ -51,33 +51,36 @@ function DroppableDayCell({ dayIso, children, className = "", onClick }) {
   );
 }
 
-/* ---------------- Recurrence helpers ---------------- */
+/* ---------------- Date + recurrence helpers ---------------- */
 
 function parseISO(iso) {
   const [y, m, d] = iso.split("-").map(Number);
   return new Date(y, m - 1, d);
 }
-
 function daysBetween(aISO, bISO) {
   const a = parseISO(aISO);
   const b = parseISO(bISO);
   const ms = b.getTime() - a.getTime();
   return Math.floor(ms / (1000 * 60 * 60 * 24));
 }
-
 function weekdayOf(iso) {
   return parseISO(iso).getDay(); // 0=Sun
 }
-
 function dayOfMonth(iso) {
   return parseISO(iso).getDate();
 }
+function addDaysISO(iso, n) {
+  const d = parseISO(iso);
+  d.setDate(d.getDate() + n);
+  return toISODate(d);
+}
 
+// returns true if task "occurs" on targetISO
 function occursOn(task, targetISO) {
   const r = task.recurrence || "none";
   if (r === "none") return task.date === targetISO;
 
-  // recurrence only happens on/after start date
+  // recurrence only happens on/after the start date
   if (targetISO < task.date) return false;
 
   if (r === "daily") {
@@ -103,7 +106,7 @@ function isRecurring(task) {
   return task.recurrence && task.recurrence !== "none";
 }
 
-// ✅ status on a specific date (works for both recurring + non-recurring)
+// occurrence-aware status
 function statusOnDate(task, iso) {
   if (!isRecurring(task)) return task.status;
 
@@ -112,12 +115,37 @@ function statusOnDate(task, iso) {
   return "todo";
 }
 
+// pick a “best date” to jump to when selecting a search result
+function bestDateForTask(task, todayISO) {
+  if (!isRecurring(task)) return task.date;
+
+  // try today..today+45 for the next occurrence
+  let cur = todayISO;
+  for (let i = 0; i < 45; i++) {
+    if (occursOn(task, cur)) return cur;
+    cur = addDaysISO(cur, 1);
+  }
+  // fallback
+  return task.date;
+}
+
+/* ---------------- Main page ---------------- */
+
 export default function CalendarPage({ user }) {
   const [monthDate, setMonthDate] = useState(() => new Date());
   const [selectedISO, setSelectedISO] = useState(() => toISODate(new Date()));
   const [tasks, setTasks] = useState([]);
   const [error, setError] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
+
+  // ✅ top search bar (global)
+  const [searchQ, setSearchQ] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchWrapRef = useRef(null);
+
+  // ✅ optional filters ONLY for selected-day list (keeps your bottom list strict)
+  const [priorityFilter, setPriorityFilter] = useState("all"); // all|low|med|high
+  const [statusFilter, setStatusFilter] = useState("all"); // all|todo|doing|done
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -131,6 +159,15 @@ export default function CalendarPage({ user }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state]);
+
+  useEffect(() => {
+    function onDocMouseDown(e) {
+      if (!searchWrapRef.current) return;
+      if (!searchWrapRef.current.contains(e.target)) setSearchOpen(false);
+    }
+    document.addEventListener("mousedown", onDocMouseDown);
+    return () => document.removeEventListener("mousedown", onDocMouseDown);
+  }, []);
 
   async function loadTasks() {
     setError("");
@@ -151,7 +188,6 @@ export default function CalendarPage({ user }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  // ✅ Build tasksByDate (expands recurring tasks into visible month)
   const tasksByDate = useMemo(() => {
     const map = {};
 
@@ -179,6 +215,30 @@ export default function CalendarPage({ user }) {
       .sort((a, b) => (a.time || "").localeCompare(b.time || ""));
   }, [tasksByDate, selectedISO]);
 
+  const filteredSelectedTasks = useMemo(() => {
+    return selectedTasks.filter((t) => {
+      const st = statusOnDate(t, selectedISO);
+      const okStatus = statusFilter === "all" ? true : st === statusFilter;
+      const okPrio = priorityFilter === "all" ? true : t.priority === priorityFilter;
+      return okStatus && okPrio;
+    });
+  }, [selectedTasks, selectedISO, statusFilter, priorityFilter]);
+
+  // ✅ dropdown search matches (global across all tasks)
+  const searchMatches = useMemo(() => {
+    const q = searchQ.trim().toLowerCase();
+    if (!q) return [];
+
+    const matches = tasks
+      .filter((t) => {
+        const hay = `${t.title || ""} ${t.description || ""}`.toLowerCase();
+        return hay.includes(q);
+      })
+      .slice(0, 8);
+
+    return matches;
+  }, [searchQ, tasks]);
+
   function prevMonth() {
     setMonthDate((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1));
   }
@@ -204,17 +264,6 @@ export default function CalendarPage({ user }) {
     }
   }
 
-  // ✅ Set status using the new unified route (recurring=per-date, non-recurring=normal)
-  async function setStatusForSelectedDate(task, nextStatus) {
-    if (!user) return;
-    try {
-      await api.setOccurrenceStatus(task._id, selectedISO, nextStatus);
-      await loadTasks();
-    } catch (e) {
-      setError(e.message);
-    }
-  }
-
   async function quickDelete(id) {
     if (!confirm("Delete this task?")) return;
     try {
@@ -224,8 +273,51 @@ export default function CalendarPage({ user }) {
       setError(e.message);
     }
   }
+  async function setDoingForSelectedDate(task) {
+  if (!user) return;
+  try {
+    if (isRecurring(task)) {
+      // occurrence-only
+      await api.setOccurrenceStatus(task._id, selectedISO, "doing");
+    } else {
+      await api.updateTask(task._id, { status: "doing" });
+    }
+    await loadTasks();
+  } catch (e) {
+    setError(e.message);
+  }
+}
 
-  // ✅ drag drop handler (move base date of task)
+async function setDoneForSelectedDate(task) {
+  if (!user) return;
+  try {
+    if (isRecurring(task)) {
+      // occurrence-only
+      await api.setOccurrenceStatus(task._id, selectedISO, "done");
+    } else {
+      await api.updateTask(task._id, { status: "done" });
+    }
+    await loadTasks();
+  } catch (e) {
+    setError(e.message);
+  }
+}
+
+async function clearStateForSelectedDate(task) {
+  // optional helper if you ever want to reset to todo
+  if (!user) return;
+  try {
+    if (isRecurring(task)) {
+      await api.setOccurrenceStatus(task._id, selectedISO, "todo");
+    } else {
+      await api.updateTask(task._id, { status: "todo" });
+    }
+    await loadTasks();
+  } catch (e) {
+    setError(e.message);
+  }
+}
+  // ✅ drag drop handler (moves base date)
   async function handleDragEnd(event) {
     const { active, over } = event;
     if (!over) return;
@@ -248,8 +340,78 @@ export default function CalendarPage({ user }) {
     }
   }
 
+  function selectSearchResult(task) {
+    const todayISO = toISODate(new Date());
+    const jumpISO = bestDateForTask(task, todayISO);
+
+    setSelectedISO(jumpISO);
+    setSearchOpen(false);
+    setSearchQ("");
+
+    // open detail (you can remove this if you prefer just jumping)
+    navigate(`/tasks/${task._id}`);
+  }
+
   return (
     <div className="page">
+      {/* ✅ Global search directly under navbar */}
+      <div className="globalSearchRow" ref={searchWrapRef}>
+        <div className="searchWrapTop">
+          <span className="searchIcon">🔎</span>
+          <input
+            className="searchInput"
+            value={searchQ}
+            onChange={(e) => {
+              setSearchQ(e.target.value);
+              setSearchOpen(true);
+            }}
+            onFocus={() => setSearchOpen(true)}
+            placeholder="Search tasks..."
+            disabled={!user}
+          />
+        </div>
+
+        {searchOpen && searchQ.trim() && user && (
+          <div className="searchDropdown">
+            {searchMatches.length === 0 ? (
+              <div className="searchEmpty">No matches</div>
+            ) : (
+              searchMatches.map((t) => {
+                const recurring = isRecurring(t);
+                return (
+                  <button
+                    key={t._id}
+                    className="searchItem"
+                    type="button"
+                    onClick={() => selectSearchResult(t)}
+                    title="Open task"
+                  >
+                    <div className="searchItemTitle">
+                      <span className={`dot ${t.status}`} />
+                      <span className="searchItemText">
+                        {t.title}
+                        {recurring ? " ⟳" : ""}
+                      </span>
+                    </div>
+                    <div className="searchItemMeta">
+                      <span className="mutedText">{t.date}</span>
+                      <span className="sep">•</span>
+                      <span className={`tag ${t.priority}`}>{t.priority}</span>
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        )}
+
+        {!user && (
+          <div className="mutedText" style={{ marginTop: 8 }}>
+            Log in to search your tasks.
+          </div>
+        )}
+      </div>
+
       <div className="topRow">
         <div>
           <h1>Calendar</h1>
@@ -279,6 +441,7 @@ export default function CalendarPage({ user }) {
         />
       </DndContext>
 
+      {/* ✅ Bottom stays strictly “tasks for selected date” */}
       <div className="listCard">
         <div className="listHeader">
           <h2>Tasks for {selectedISO}</h2>
@@ -287,57 +450,91 @@ export default function CalendarPage({ user }) {
           </button>
         </div>
 
+        {/* Optional filters for the selected day only */}
+        {user && (
+          <div className="filtersRow">
+            <select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)}>
+              <option value="all">Priority: All</option>
+              <option value="high">Priority: High</option>
+              <option value="med">Priority: Medium</option>
+              <option value="low">Priority: Low</option>
+            </select>
+
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+              <option value="all">Status: All</option>
+              <option value="todo">Status: Todo</option>
+              <option value="doing">Status: Doing</option>
+              <option value="done">Status: Done</option>
+            </select>
+
+            <button
+              className="btn secondary small"
+              type="button"
+              onClick={() => {
+                setPriorityFilter("all");
+                setStatusFilter("all");
+              }}
+            >
+              Clear
+            </button>
+          </div>
+        )}
+
         {!user ? (
           <div className="empty">
             <p>You’re not logged in. Log in to see and create tasks.</p>
-            <button className="btn" onClick={() => navigate("/auth")}>
-              Login / Sign up
-            </button>
+            <button className="btn" onClick={() => navigate("/auth")}>Login / Sign up</button>
           </div>
-        ) : selectedTasks.length === 0 ? (
+        ) : filteredSelectedTasks.length === 0 ? (
           <div className="empty">
-            <p>No tasks yet for this date.</p>
-            <button className="btn" onClick={() => setModalOpen(true)}>
-              Create one
-            </button>
+            <p>No tasks for this date (or they’re filtered out).</p>
+            <button className="btn" onClick={() => setModalOpen(true)}>Create one</button>
           </div>
         ) : (
           <ul className="taskList">
-            {selectedTasks.map((t) => {
-              const curStatus = statusOnDate(t, selectedISO);
-              const isDoing = curStatus === "doing";
-              const isDone = curStatus === "done";
+            {filteredSelectedTasks.map((t) => {
+              const st = statusOnDate(t, selectedISO);
+              const recurring = isRecurring(t);
 
               return (
                 <li key={t._id} className="taskRow">
                   <div className="taskMain" onClick={() => navigate(`/tasks/${t._id}`)}>
                     <div className="taskTitle">
-                      {/* ✅ Yellow doing circle */}
+                      {/* Yellow doing circle */}
                       <button
-                        className={`stateDot ${isDoing ? "doing" : ""}`}
                         type="button"
-                        title={isDoing ? "Unmark doing" : "Mark as Doing"}
+                        className={`stateDot ${st === "doing" ? "doing" : ""}`}
+                        title="Mark as Doing"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setStatusForSelectedDate(t, isDoing ? "todo" : "doing");
+                          setDoingForSelectedDate(t);
                         }}
+                        aria-label="Mark as doing"
                       />
 
-                      {/* ✅ Green done check */}
+                      {/* Green done box */}
                       <button
-                        className={`stateCheck ${isDone ? "done" : ""}`}
                         type="button"
-                        title={isDone ? "Unmark done" : "Mark as Done"}
+                        className={`stateCheck ${st === "done" ? "done" : ""}`}
+                        title="Mark as Done"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setStatusForSelectedDate(t, isDone ? "todo" : "done");
+                          setDoneForSelectedDate(t);
                         }}
+                        aria-label="Mark as done"
                       >
-                        {isDone ? "✓" : ""}
+                        {st === "done" ? "✓" : ""}
                       </button>
 
-                      <span className={`${isDone ? "strike" : ""} ${isDoing ? "lightTitle" : ""}`}>
+                      {/* Title styling */}
+                      <span
+                        className={[
+                          st === "done" ? "strike" : "",
+                          st === "doing" ? "lightTitle" : "",
+                        ].join(" ")}
+                      >
                         {t.title}
+                        {recurring ? " ⟳" : ""}
                       </span>
                     </div>
 
@@ -345,18 +542,14 @@ export default function CalendarPage({ user }) {
                       {t.time ? <span>{t.time}</span> : <span className="mutedText">No time</span>}
                       <span className="sep">•</span>
                       <span className={`tag ${t.priority}`}>{t.priority}</span>
-                      {isRecurring(t) && <span className="sep">•</span>}
-                      {isRecurring(t) && <span className="mutedText">⟳</span>}
+                      <span className="sep">•</span>
+                      <span className="mutedText">{st}</span>
                     </div>
                   </div>
 
                   <div className="taskActions">
-                    <button className="btn small" onClick={() => navigate(`/tasks/${t._id}`)}>
-                      Open
-                    </button>
-                    <button className="btn small danger" onClick={() => quickDelete(t._id)}>
-                      Delete
-                    </button>
+                    <button className="btn small" onClick={() => navigate(`/tasks/${t._id}`)}>Open</button>
+                    <button className="btn small danger" onClick={() => quickDelete(t._id)}>Delete</button>
                   </div>
                 </li>
               );
