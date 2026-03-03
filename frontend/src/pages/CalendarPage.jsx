@@ -1,9 +1,53 @@
 import React from "react";
+import { DndContext, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Calendar, { toISODate } from "../components/Calendar.jsx";
 import TaskModal from "../components/TaskModal.jsx";
 import { api } from "../api/client.js";
+
+function DraggableTaskChip({ task, children }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: task._id,
+    data: { task },
+  });
+
+  const style = transform
+    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
+    : undefined;
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`chip chipDraggable ${isDragging ? "dragging" : ""}`}
+      {...listeners}
+      {...attributes}
+      title="Drag to another date"
+    >
+      {children}
+    </div>
+  );
+}
+
+function DroppableDayCell({ dayIso, children, className = "", onClick }) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: dayIso,
+    data: { dayIso },
+  });
+
+  return (
+    <button
+      ref={setNodeRef}
+      className={`calCell ${className} ${isOver ? "dropOver" : ""}`}
+      onClick={onClick}
+      type="button"
+    >
+      {children}
+    </button>
+  );
+}
 
 export default function CalendarPage({ user }) {
   const [monthDate, setMonthDate] = useState(() => new Date());
@@ -15,10 +59,13 @@ export default function CalendarPage({ user }) {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
+  );
+
   useEffect(() => {
     // if navbar navigated with "openCreate"
     if (location.state?.openCreate) {
-      // clear state
       navigate("/", { replace: true, state: {} });
       handleCreateClick();
     }
@@ -32,7 +79,7 @@ export default function CalendarPage({ user }) {
       return;
     }
     try {
-      const list = await api.listTasks(); // get all tasks for calendar chips
+      const list = await api.listTasks();
       setTasks(list);
     } catch (e) {
       setError(e.message);
@@ -54,7 +101,9 @@ export default function CalendarPage({ user }) {
   }, [tasks]);
 
   const selectedTasks = useMemo(() => {
-    return (tasksByDate[selectedISO] || []).slice().sort((a, b) => (a.time || "").localeCompare(b.time || ""));
+    return (tasksByDate[selectedISO] || [])
+      .slice()
+      .sort((a, b) => (a.time || "").localeCompare(b.time || ""));
   }, [tasksByDate, selectedISO]);
 
   function prevMonth() {
@@ -92,13 +141,42 @@ export default function CalendarPage({ user }) {
     }
   }
 
+  // ✅ drag drop handler
+  async function handleDragEnd(event) {
+    const { active, over } = event;
+    if (!over) return;
+
+    if (!user) return;
+
+    const task = active.data.current?.task;
+    const newDate = over.id; // ISO date string "YYYY-MM-DD"
+    if (!task || !newDate) return;
+
+    const oldDate = task.date;
+    if (oldDate === newDate) return;
+
+    try {
+      // Update task date in backend
+      await api.updateTask(task._id, { date: newDate });
+
+      // Refresh task list
+      await loadTasks();
+
+      // Optional: jump selection to drop date
+      setSelectedISO(newDate);
+    } catch (e) {
+      console.error("Drag update failed:", e);
+      setError("Could not move task. Try again.");
+    }
+  }
+
   return (
     <div className="page">
       <div className="topRow">
         <div>
           <h1>Calendar</h1>
           <p className="subtle">
-            Click a date to view tasks. Create tasks from the selected date.
+            Click a date to view tasks. Drag a task chip onto another date to move it.
           </p>
         </div>
 
@@ -109,14 +187,19 @@ export default function CalendarPage({ user }) {
 
       {error && <div className="error">{error}</div>}
 
-      <Calendar
-        monthDate={monthDate}
-        selectedISO={selectedISO}
-        tasksByDate={tasksByDate}
-        onSelectDate={setSelectedISO}
-        onPrev={prevMonth}
-        onNext={nextMonth}
-      />
+      {/* ✅ Wrap Calendar in DndContext */}
+      <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+        <Calendar
+          monthDate={monthDate}
+          selectedISO={selectedISO}
+          tasksByDate={tasksByDate}
+          onSelectDate={setSelectedISO}
+          onPrev={prevMonth}
+          onNext={nextMonth}
+          DraggableTaskChip={DraggableTaskChip}
+          DroppableDayCell={DroppableDayCell}
+        />
+      </DndContext>
 
       <div className="listCard">
         <div className="listHeader">
