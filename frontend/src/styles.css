@@ -132,8 +132,15 @@ a { color: inherit; text-decoration: none; }
 .calTitle { margin: 0; font-size: 18px; }
 
 .calGrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; }
-.calDow { color: var(--muted); font-size: 12px; padding: 0 6px; }
 
+.calDow { color: var(--muted); font-size: 12px; padding: 0 6px; }
+.chipDraggable { cursor: grab; }
+.chipDraggable.dragging { opacity: 0.6; cursor: grabbing; }
+
+.calCell.dropOver {
+  outline: 2px solid rgba(37, 99, 235, 0.45);
+  background: rgba(37, 99, 235, 0.06);
+}
 .calCell {
   border: 1px solid var(--border);
   background: rgba(255,255,255,0.02);
