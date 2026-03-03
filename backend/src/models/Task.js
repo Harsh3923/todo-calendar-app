@@ -10,7 +10,11 @@ const TaskSchema = new mongoose.Schema(
     priority: { type: String, enum: ["low", "med", "high"], default: "med" },
     status: { type: String, enum: ["todo", "doing", "done"], default: "todo" },
     recurrence: { type: String, enum: ["none", "daily", "weekly", "monthly"], default: "none" },
-    recurrenceInterval: { type: Number, default: 1 } // keep for future
+    recurrenceInterval: { type: Number, default: 1 }, // keep for future
+    prevStatus: { type: String, enum: ["todo", "doing"], default: "todo" },
+    completedAt: { type: Date, default: null },
+    completedDates: { type: [String], default: [] }, // YYYY-MM-DD occurrences completed
+    doingDates: { type: [String], default: [] }, // YYYY-MM-DD occurrences in-progress
   },
   { timestamps: true }
 );
