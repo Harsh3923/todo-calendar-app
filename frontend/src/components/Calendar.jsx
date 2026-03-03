@@ -1,4 +1,5 @@
 import React from "react";
+
 function pad2(n) {
   return String(n).padStart(2, "0");
 }
@@ -15,7 +16,16 @@ function endOfMonth(date) {
   return new Date(date.getFullYear(), date.getMonth() + 1, 0);
 }
 
-export default function Calendar({ monthDate, selectedISO, tasksByDate, onSelectDate, onPrev, onNext }) {
+export default function Calendar({
+  monthDate,
+  selectedISO,
+  tasksByDate,
+  onSelectDate,
+  onPrev,
+  onNext,
+  DraggableTaskChip,
+  DroppableDayCell,
+}) {
   const first = startOfMonth(monthDate);
   const last = endOfMonth(monthDate);
 
@@ -29,19 +39,41 @@ export default function Calendar({ monthDate, selectedISO, tasksByDate, onSelect
   }
   while (cells.length % 7 !== 0) cells.push(null);
 
-  const monthLabel = monthDate.toLocaleString(undefined, { month: "long", year: "numeric" });
+  const monthLabel = monthDate.toLocaleString(undefined, {
+    month: "long",
+    year: "numeric",
+  });
+
+  // fallbacks if not provided
+  const DayCell = DroppableDayCell
+    ? DroppableDayCell
+    : ({ dayIso, children, className, onClick }) => (
+        <button className={`calCell ${className || ""}`} onClick={onClick} type="button">
+          {children}
+        </button>
+      );
+
+  const Chip = DraggableTaskChip
+    ? DraggableTaskChip
+    : ({ task, children }) => <div className={`chip ${task.status}`}>{children}</div>;
 
   return (
     <div className="calendarCard">
       <div className="calHeader">
-        <button className="iconBtn" onClick={onPrev}>◀</button>
+        <button className="iconBtn" onClick={onPrev} type="button">
+          ◀
+        </button>
         <h2 className="calTitle">{monthLabel}</h2>
-        <button className="iconBtn" onClick={onNext}>▶</button>
+        <button className="iconBtn" onClick={onNext} type="button">
+          ▶
+        </button>
       </div>
 
       <div className="calGrid">
-        {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map((d) => (
-          <div key={d} className="calDow">{d}</div>
+        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
+          <div key={d} className="calDow">
+            {d}
+          </div>
         ))}
 
         {cells.map((d, idx) => {
@@ -52,20 +84,26 @@ export default function Calendar({ monthDate, selectedISO, tasksByDate, onSelect
           const list = tasksByDate[iso] || [];
 
           return (
-            <button
+            <DayCell
               key={idx}
-              className={`calCell ${selected ? "selected" : ""}`}
+              dayIso={iso}
+              className={selected ? "selected" : ""}
               onClick={() => onSelectDate(iso)}
-              title={iso}
             >
               <div className="calDayNum">{d.getDate()}</div>
+
               <div className="calChips">
                 {list.slice(0, 2).map((t) => (
-                  <div key={t._id} className={`chip ${t.status}`}>{t.title}</div>
+                  <Chip key={t._id} task={t}>
+                    <span className={t.recurrence && t.recurrence !== "none" ? "recurring" : ""}>
+                      {t.title}{t.recurrence && t.recurrence !== "none" ? " ⟳" : ""}
+                    </span>
+                  </Chip>
                 ))}
+
                 {list.length > 2 && <div className="chip more">+{list.length - 2} more</div>}
               </div>
-            </button>
+            </DayCell>
           );
         })}
       </div>
