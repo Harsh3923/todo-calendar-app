@@ -8,7 +8,9 @@ const TaskSchema = new mongoose.Schema(
     date: { type: String, required: true, match: /^\d{4}-\d{2}-\d{2}$/ }, // YYYY-MM-DD
     time: { type: String, default: "" }, // "14:30" optional
     priority: { type: String, enum: ["low", "med", "high"], default: "med" },
-    status: { type: String, enum: ["todo", "doing", "done"], default: "todo" }
+    status: { type: String, enum: ["todo", "doing", "done"], default: "todo" },
+    recurrence: { type: String, enum: ["none", "daily", "weekly", "monthly"], default: "none" },
+    recurrenceInterval: { type: Number, default: 1 } // keep for future
   },
   { timestamps: true }
 );
