@@ -7,6 +7,7 @@ import CalendarPage from "./pages/CalendarPage.jsx";
 import AuthPage from "./pages/AuthPage.jsx";
 import TaskDetailPage from "./pages/TaskDetailPage.jsx";
 import { api, setToken, getToken } from "./api/client.js";
+import CompletedTasksPage from "./pages/CompletedTasksPage.jsx";
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -66,6 +67,7 @@ export default function App() {
     />
 
       <Routes>
+        <Route path="/completed" element={<CompletedTasksPage user={user} />} />
         <Route path="/" element={<CalendarPage user={user} />} />
         <Route path="/auth" element={<AuthPage onSuccess={onAuthSuccess} />} />
         <Route path="/tasks/:id" element={<TaskDetailPage user={user} />} />
