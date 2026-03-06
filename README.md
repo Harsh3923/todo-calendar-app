@@ -1,212 +1,159 @@
+# TODO Calendar App (MERN CRUD Application)
 
-# todo-calendar-app
-a MERN stack based to-do calendar app
-# 🗓️ TaskFlow – Calendar Based To-Do Web Application
+## Overview
 
-![MongoDB](https://img.shields.io/badge/Database-MongoDB-green)
-![Express](https://img.shields.io/badge/Backend-Express.js-darkgrey)
-![React](https://img.shields.io/badge/Frontend-React-blue)
-![Node](https://img.shields.io/badge/Runtime-Node.js-yellow)
-![Status](https://img.shields.io/badge/Project-Completed-success)
+TaskCalendar is a full-stack web application that allows users to manage tasks through a calendar-based interface. The application is built using the MERN stack (MongoDB, Express, React, Node.js) and demonstrates how a client-side application communicates with a backend server through a RESTful API.
 
-TaskFlow is a **modern calendar-based task management web application** that helps users organize their tasks visually and track productivity using analytics dashboards.
+Users can create, view, update, and delete tasks while organizing them by date. The frontend provides multiple pages and reusable components that allow users to navigate between a dashboard, calendar view, and task details. These interactions send HTTP requests to the backend server, which processes the requests and retrieves or modifies task data stored in a MongoDB database.
 
-The system combines the simplicity of a **traditional to-do list** with the **visual clarity of a calendar interface**, allowing users to easily schedule tasks, track progress, and monitor productivity patterns.
+This project was developed to meet the requirements of CPS630 Assignment 2, which focuses on developing a medium-fidelity MERN web application with a REST API and full CRUD functionality. The application demonstrates how a React frontend interacts with a Node.js and Express backend while using MongoDB for persistent data storage.
 
----
+In the future, the application could be extended with additional features such as task notifications, drag-and-drop scheduling within the calendar, and integration with external calendar services. These improvements would expand the functionality of the application while maintaining the same client–server architecture.
 
-# 📌 Overview
+## Technologies Used
 
-TaskFlow was designed to provide a simple yet powerful productivity tool where users can create tasks for specific dates and track their progress through a clean and intuitive interface.
+### Backend
 
-Unlike basic to-do list applications, TaskFlow integrates a **calendar view and productivity dashboard** to provide a more comprehensive planning experience. Tasks can be created, prioritized, completed, and searched through an interactive interface.
+- Node.js
+- Express.js
+- MongoDB
+- Mongoose
+- CORS
 
-The application also includes **data visualization tools** that help users analyze their productivity, such as completion rate statistics, task distribution charts, and monthly activity heatmaps.
+### Frontend
 
-### Future Extensions
+- React
+- Vite
+- JavaScript (Fetch API / HTTP requests)
+- HTML5
+- CSS3
 
-This project can be expanded with several additional features:
+## Features
 
-* User authentication and account system
-* Cloud database storage for persistent data
-* Reminders for tasks
-* Email or push notifications
-* Collaboration features for shared task boards
-* Mobile-responsive optimization
-* AI-based productivity recommendations
+- MERN stack full-stack architecture
+- Express backend server with REST API
+- MongoDB database connection using Mongoose
+- Automatic database test data seeding on startup
+- Multiple React frontend views
+- Full CRUD task management
+- Modular backend structure (routes, models, middleware)
+- Calendar-based task organization
+- Error handling for invalid requests (404 handling)
+- Client–server communication using HTTP requests
 
----
+## Application Pages
 
-# 🚀 Features
-### ☀️/🌙 Change UI Themes
-* Can toggle between light mode and dark mode with the press of a button
+### Dashboard Page
 
-### 📅 Calendar Task Management
+- Provides an overview of tasks
+- Displays completion statistics and visual representations of tasks
 
-* Create tasks assigned to specific dates
-* Create recurring task
-* View tasks directly on the calendar
-* Select a date to display tasks scheduled for that day
+### Calendar Page
 
-### ✔ Task Completion Tracking
+- Displays tasks organized by date in a calendar-style interface.
+- Users can view tasks scheduled for specific days.
 
-* Mark tasks as completed with a checkbox
-* Completed tasks move to a **Done list**
-* Tasks appear with **strikethrough styling**
+### Create Task Page
 
-### 🔍 Task Search and Filters
+- allows users to create tasks by specifying:
+  - _Title_, _Description_, _Date_, _Recurrence_, _Priority_ and _Status_
 
-* Search tasks using a live search bar
-* Dropdown suggestions for matching tasks
-* Filter tasks by:
+### Authentication Page
 
-  * Priority
-  * Status
-  * Date range
+- Provides a login interface for future authentication features.
 
-### 📊 Productivity Dashboard
-
-Visual analytics include:
-
-* Tasks completed this week
-* Completion rate statistics
-* Tasks grouped by priority
-* Tasks grouped by status
-* Monthly productivity heatmap
-* Most productive day tracking
-
-### 🎨 Clean UI Design
-
-* Minimalistic layout
-* Responsive components
-* Organized task lists and calendar interface
-
----
-
-# 🛠 Technologies Used
-
-| Technology              | Role                                  |
-| ----------------------- | ------------------------------------- |
-| **MongoDB**             | Stores task data and user information |
-| **Express.js**          | Backend server and API handling       |
-| **React.js**            | Frontend user interface               |
-| **Node.js**             | Server runtime environment            |
-| **Recharts / Chart.js** | Data visualization for dashboards     |
-| **JavaScript (ES6)**    | Application logic                     |
-| **CSS**                 | UI styling                            |
-
-
----
-# ⚙ Installation
-
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/yourusername/todo-calendar-app.git
-```
-
-### 2. Navigate to the project directory
-
-```bash
-cd todo-calendar-app
-```
-
-### 3. Install dependencies
-
-```bash
-cd backend
-npm install
-```
-```bash
-cd frontend
-npm install
-```
-
-### 4. Install chart library
-
-```bash
-cd frontend
-npm install recharts
-```
-
----
-
-# ▶ Running the Project
-
-Start the development server:
-
-```bash
-cd backend
-npm run start
-```
-```bash
-cd frontend
-npm run dev
-```
-
-Then open the application in your browser:
+## Project Structure
 
 ```
-http://localhost:5173/
+todo-calendar-app
+│
+├── backend
+│   ├── server.js
+│   ├── package.json
+│   ├── .env
+│   └── src
+│       ├── middleware
+│       ├── models
+│       ├── routes
+│       └── seed
+│
+├── frontend
+│   ├── index.html
+│   ├── package.json
+│   └── src
+│       ├── api
+│       │   └── client.js
+│       ├── components
+│       │   ├── Calendar.jsx
+│       │   ├── Navbar.jsx
+│       │   └── TaskModal.jsx
+│       ├── pages
+│       │   ├── AuthPage.jsx
+│       │   ├── CalendarPage.jsx
+│       │   ├── CompletedTasksPage.jsx
+│       │   ├── DashboardPage.jsx
+│       │   └── TaskDetailPage.jsx
+│       ├── App.jsx
+│       ├── main.jsx
+│       └── styles.css
+│
+└── README.md
 ```
 
-The project will automatically reload whenever changes are made to the source code.
-If an error occurs then manually connect the database with your mongoDB compass and the run the backend and frontend.
+## How to Run the Application
 
----
+### Prerequisites
 
-# 📖 How to Use the Application
+- Node.js
+- npm
+- MongoDB running locally or a MongoDB connection string
 
-### Creating Tasks
+### Steps
 
-Users can create tasks by selecting a date on the calendar and entering the task title and priority.
+#### 1. Clone the repository
 
-### Task Priorities
+- `git clone https://github.com/Harsh3923/todo-calendar-app.git`
 
-Each task can be assigned one of the following priorities:
+#### 2. Navigate to the project directory
 
-* High
-* Medium
-* Low
+- `cd todo-calendar-app`
 
-This helps users identify important tasks quickly.
+#### 3. Backend Setup:
 
-### Completing Tasks
+- Navigate to the backend directory: `cd backend`
+- Install dependencies: `npm install` or `npm i`
+- Start the server: `npm run start`
+- The backend server will run at `http://localhost:8080`
 
-Tasks can be marked as completed using a checkbox. When completed:
+#### 4. Frontend Setup:
 
-* The task moves to the completed list
-* The task text is displayed with a strikethrough
+- Open a new terminal and navigate to the frontend directory: `cd frontend`
+- Install dependencies: `npm install` or `npm i`
+- Run the development server: `npm run dev`
+- The frontend will run at `http://localhost:5173/`
 
-### Searching Tasks
+#### 5. How to Use the Application
 
-The search bar allows users to quickly find tasks. Matching tasks appear in a dropdown list for easy navigation.
+1. Open the frontend in a browser at `http://localhost:5173/`
+2. Login using given credentials `demo@todo.com / demo123`
+3. Create a new task using the task modal.
+4. Tasks appear on the calendar according to their scheduled date.
+5. Click on a task to view or edit its details.
+6. Tasks can be updated or deleted through the interface.
+7. View all tasks statistics in Dashboard
 
-### Viewing Productivity
+## Notes
 
-The dashboard provides visual insights through charts and heatmaps that display task completion statistics and productivity trends.
+The application connects to MongoDB and automatically sends test data if the database is empty when the server starts. This allows the application to demonstrate functionality immediately without manually adding tasks.
 
----
+## Reflection
 
-# 🧠 Reflection
+### Brief Overview
 
-This project focused on designing and implementing a modern task management system using contemporary web development tools. The primary goal was to create a user-friendly interface that allows users to manage tasks visually while also providing productivity insights through analytics.
+This assignment involved building a full-stack MERN application that demonstrates CRUD operations using a REST API and a React frontend. The project required implementing both backend and frontend components, connecting them through HTTP requests, and storing application data in a MongoDB database. Through this assignment, we gained a deeper understanding of how the MERN stack operates and how client applications communicate with backend servers.
 
-One of the main successes of the project was the integration of multiple interactive features such as calendar scheduling, search functionality, task completion tracking, and data visualization dashboards. These features work together to create a comprehensive productivity tool that goes beyond a simple to-do list.
+### Challenges/Successes
 
-One challenge encountered during development was maintaining compatibility between different UI components while continuously adding new features. As the application evolved, ensuring that new additions such as dashboards and filters did not interfere with existing functionality required careful debugging and testing.
+One challenge in this project was ensuring proper communication between the React frontend and the Express backend, particularly when handling asynchronous API requests and database operations. Debugging issues related to request handling and ensuring correct API responses required careful testing of both frontend and backend components.
 
-Overall, the project successfully demonstrates the implementation of an interactive web application using modern front-end technologies. It also highlights the importance of clean UI design, modular component development, and data visualization for improving user productivity tools.
-
----
-
-# 📌 Project Status
-
-✅ Core functionality implemented
-✅ Calendar based task management
-✅ Task completion tracking
-✅ Productivity dashboard and charts
-
-Future improvements may include user accounts authorization and mobile optimization.
-
----
+A success of this assignment was successfully implementing a modular backend structure with separate routes, models, and middleware while building a React interface that supports multiple views and CRUD operations. The final application demonstrates how a full-stack web application can be structured and extended for more complex features.
