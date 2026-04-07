@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ResponsiveContainer,
   LineChart,
@@ -187,25 +187,33 @@ export default function DashboardPage({ user }) {
     return Array.from({ length: n }, (_, i) => addDaysISO(start, i));
   }, [selectedMonth]);
 
-  useEffect(() => {
-    async function load() {
-      setError("");
-      setLoading(true);
-      try {
-        if (!user) {
-          setTasks([]);
-          return;
-        }
-        const list = await api.listTasks();
-        setTasks(list);
-      } catch (e) {
-        setError(e.message);
-      } finally {
-        setLoading(false);
-      }
+  // H9: friendly error helper
+  function friendlyError(raw) {
+    const msg = (raw || "").toLowerCase();
+    if (msg.includes("network") || msg.includes("failed to fetch"))
+      return "Cannot reach the server. Check your connection and try again.";
+    if (msg.includes("unauthorized") || msg.includes("401"))
+      return "Your session has expired. Please log in again.";
+    return raw || "Something went wrong. Please try again.";
+  }
+
+  const loadDashboard = useCallback(async () => {
+    setError("");
+    setLoading(true);
+    try {
+      if (!user) { setTasks([]); return; }
+      const list = await api.listTasks();
+      setTasks(list);
+    } catch (e) {
+      setError(friendlyError(e.message));
+    } finally {
+      setLoading(false);
     }
-    load();
-  }, [user]);
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    loadDashboard();
+  }, [loadDashboard]);
 
   const computed = useMemo(() => {
     const priority = { high: 0, med: 0, low: 0 };
@@ -354,12 +362,21 @@ export default function DashboardPage({ user }) {
         </div>
       </div>
 
-      {error && <div className="error">{error}</div>}
+      {/* H9: error with retry */}
+      {error && (
+        <div className="error errorRow">
+          <span>{error}</span>
+          <button className="btn small secondary" onClick={loadDashboard}>Try again</button>
+        </div>
+      )}
 
+      {/* H1: spinner */}
       {loading ? (
-        <div className="page"><p>Loading…</p></div>
+        <div className="spinnerWrap"><div className="spinner" aria-label="Loading dashboard…" /></div>
       ) : (
         <>
+          {/* H8: section label */}
+          <div className="dashSectionLabel">This Week at a Glance</div>
           {/* KPIs */}
           <div className="kpiGrid">
             <div className="kpiCard">
@@ -392,6 +409,8 @@ export default function DashboardPage({ user }) {
             </div>
           </div>
 
+          {/* H8: section label */}
+          <div className="dashSectionLabel">Completion Heatmap</div>
           {/* Heatmap (MONTH) */}
           <div className="dashCard heatmapCard">
             <div className="dashCardHeader">
@@ -459,6 +478,8 @@ export default function DashboardPage({ user }) {
             </div>
           </div>
 
+          {/* H8: section label */}
+          <div className="dashSectionLabel">Detailed Breakdown</div>
           {/* Charts */}
           <div className="dashGrid">
             <div className="dashCard">
