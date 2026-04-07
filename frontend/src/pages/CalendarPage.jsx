@@ -6,6 +6,21 @@ import { useLocation, useNavigate } from "react-router-dom";
 import Calendar, { toISODate } from "../components/Calendar.jsx";
 import TaskModal from "../components/TaskModal.jsx";
 import { api } from "../api/client.js";
+import { useToast } from "../components/Toast.jsx";
+
+/* ── H9: Friendly error messages ─────────────────────────── */
+function friendlyError(raw) {
+  const msg = (raw || "").toLowerCase();
+  if (msg.includes("network") || msg.includes("failed to fetch"))
+    return "Cannot reach the server. Check your connection and try again.";
+  if (msg.includes("unauthorized") || msg.includes("401"))
+    return "Your session has expired. Please log in again.";
+  return raw || "Something went wrong. Please try again.";
+}
+
+/* ── H2: Label maps ──────────────────────────────────────── */
+const PRIORITY_LABEL = { low: "Low", med: "Medium", high: "High" };
+const STATUS_ICON    = { todo: "○", doing: "◑", done: "✓" };
 
 /* ---------------- Drag helpers ---------------- */
 
@@ -64,7 +79,7 @@ function daysBetween(aISO, bISO) {
   return Math.floor(ms / (1000 * 60 * 60 * 24));
 }
 function weekdayOf(iso) {
-  return parseISO(iso).getDay(); // 0=Sun
+  return parseISO(iso).getDay();
 }
 function dayOfMonth(iso) {
   return parseISO(iso).getDate();
@@ -75,30 +90,23 @@ function addDaysISO(iso, n) {
   return toISODate(d);
 }
 
-// returns true if task "occurs" on targetISO
 function occursOn(task, targetISO) {
   const r = task.recurrence || "none";
   if (r === "none") return task.date === targetISO;
-
-  // recurrence only happens on/after the start date
   if (targetISO < task.date) return false;
-
   if (r === "daily") {
     const diff = daysBetween(task.date, targetISO);
     return diff % (task.recurrenceInterval || 1) === 0;
   }
-
   if (r === "weekly") {
     if (weekdayOf(task.date) !== weekdayOf(targetISO)) return false;
     const diff = daysBetween(task.date, targetISO);
     const weeks = Math.floor(diff / 7);
     return weeks % (task.recurrenceInterval || 1) === 0;
   }
-
   if (r === "monthly") {
     return dayOfMonth(task.date) === dayOfMonth(targetISO);
   }
-
   return false;
 }
 
@@ -106,26 +114,20 @@ function isRecurring(task) {
   return task.recurrence && task.recurrence !== "none";
 }
 
-// occurrence-aware status
 function statusOnDate(task, iso) {
   if (!isRecurring(task)) return task.status;
-
   if (Array.isArray(task.completedDates) && task.completedDates.includes(iso)) return "done";
   if (Array.isArray(task.doingDates) && task.doingDates.includes(iso)) return "doing";
   return "todo";
 }
 
-// pick a “best date” to jump to when selecting a search result
 function bestDateForTask(task, todayISO) {
   if (!isRecurring(task)) return task.date;
-
-  // try today..today+45 for the next occurrence
   let cur = todayISO;
   for (let i = 0; i < 45; i++) {
     if (occursOn(task, cur)) return cur;
     cur = addDaysISO(cur, 1);
   }
-  // fallback
   return task.date;
 }
 
@@ -136,26 +138,28 @@ export default function CalendarPage({ user }) {
   const [selectedISO, setSelectedISO] = useState(() => toISODate(new Date()));
   const [tasks, setTasks] = useState([]);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  const [modalFromNav, setModalFromNav] = useState(false);
 
-  // ✅ top search bar (global)
   const [searchQ, setSearchQ] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const searchWrapRef = useRef(null);
 
-  // ✅ optional filters ONLY for selected-day list (keeps your bottom list strict)
-  const [priorityFilter, setPriorityFilter] = useState("all"); // all|low|med|high
-  const [statusFilter, setStatusFilter] = useState("all"); // all|todo|doing|done
+  const [priorityFilter, setPriorityFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   const navigate = useNavigate();
   const location = useLocation();
+  const { addToast } = useToast();
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
   useEffect(() => {
     if (location.state?.openCreate) {
       navigate("/", { replace: true, state: {} });
-      handleCreateClick();
+      setModalFromNav(true);
+      setModalOpen(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state]);
@@ -169,17 +173,38 @@ export default function CalendarPage({ user }) {
     return () => document.removeEventListener("mousedown", onDocMouseDown);
   }, []);
 
+  // H7: keyboard shortcut — press N to open create modal
+  useEffect(() => {
+    function handleGlobalKey(e) {
+      const tag = document.activeElement?.tagName?.toLowerCase();
+      if (["input", "textarea", "select"].includes(tag)) return;
+      if (modalOpen) return;
+      if (e.key === "n" || e.key === "N") {
+        e.preventDefault();
+        if (!user) { navigate("/auth"); return; }
+        setModalFromNav(false);
+        setModalOpen(true);
+      }
+    }
+    document.addEventListener("keydown", handleGlobalKey);
+    return () => document.removeEventListener("keydown", handleGlobalKey);
+  }, [modalOpen, user, navigate]);
+
   async function loadTasks() {
     setError("");
+    setLoading(true);
     if (!user) {
       setTasks([]);
+      setLoading(false);
       return;
     }
     try {
       const list = await api.listTasks();
       setTasks(list);
     } catch (e) {
-      setError(e.message);
+      setError(friendlyError(e.message));
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -190,22 +215,18 @@ export default function CalendarPage({ user }) {
 
   const tasksByDate = useMemo(() => {
     const map = {};
-
     const year = monthDate.getFullYear();
     const month = monthDate.getMonth();
     const last = new Date(year, month + 1, 0);
-
     for (let d = 1; d <= last.getDate(); d++) {
       const iso = toISODate(new Date(year, month, d));
       map[iso] = [];
     }
-
     for (const t of tasks) {
       for (const iso of Object.keys(map)) {
         if (occursOn(t, iso)) map[iso].push(t);
       }
     }
-
     return map;
   }, [tasks, monthDate]);
 
@@ -224,19 +245,12 @@ export default function CalendarPage({ user }) {
     });
   }, [selectedTasks, selectedISO, statusFilter, priorityFilter]);
 
-  // ✅ dropdown search matches (global across all tasks)
   const searchMatches = useMemo(() => {
     const q = searchQ.trim().toLowerCase();
     if (!q) return [];
-
-    const matches = tasks
-      .filter((t) => {
-        const hay = `${t.title || ""} ${t.description || ""}`.toLowerCase();
-        return hay.includes(q);
-      })
+    return tasks
+      .filter((t) => `${t.title || ""} ${t.description || ""}`.toLowerCase().includes(q))
       .slice(0, 8);
-
-    return matches;
   }, [searchQ, tasks]);
 
   function prevMonth() {
@@ -247,10 +261,8 @@ export default function CalendarPage({ user }) {
   }
 
   function handleCreateClick() {
-    if (!user) {
-      navigate("/auth");
-      return;
-    }
+    if (!user) { navigate("/auth"); return; }
+    setModalFromNav(false);
     setModalOpen(true);
   }
 
@@ -258,121 +270,134 @@ export default function CalendarPage({ user }) {
     try {
       await api.createTask(payload);
       setModalOpen(false);
+      setModalFromNav(false);
+      addToast("Task created", "success");
       await loadTasks();
     } catch (e) {
-      setError(e.message);
+      setError(friendlyError(e.message));
     }
   }
 
-  async function quickDelete(id) {
-    if (!confirm("Delete this task?")) return;
-    try {
-      await api.deleteTask(id);
-      await loadTasks();
-    } catch (e) {
-      setError(e.message);
-    }
+  // H3: Undo-toast delete — replaces window.confirm()
+  async function quickDelete(task) {
+    setTasks((prev) => prev.filter((t) => t._id !== task._id));
+    let undone = false;
+
+    addToast(
+      `"${task.title}" deleted`,
+      "info",
+      async () => {
+        undone = true;
+        try {
+          await api.createTask({
+            title: task.title,
+            description: task.description,
+            date: task.date,
+            time: task.time,
+            priority: task.priority,
+            status: task.status,
+            recurrence: task.recurrence,
+          });
+          await loadTasks();
+          addToast("Task restored", "success");
+        } catch {
+          addToast("Could not restore task.", "error");
+          await loadTasks();
+        }
+      },
+      4500
+    );
+
+    setTimeout(async () => {
+      if (!undone) {
+        try {
+          await api.deleteTask(task._id);
+        } catch {
+          addToast("Delete failed — reloading.", "error");
+          await loadTasks();
+        }
+      }
+    }, 4500);
   }
+
   async function setDoingForSelectedDate(task) {
-  if (!user) return;
-  try {
-    if (isRecurring(task)) {
-      // occurrence-only
-      await api.setOccurrenceStatus(task._id, selectedISO, "doing");
-    } else {
-      await api.updateTask(task._id, { status: "doing" });
+    if (!user) return;
+    try {
+      if (isRecurring(task)) {
+        await api.setOccurrenceStatus(task._id, selectedISO, "doing");
+      } else {
+        await api.updateTask(task._id, { status: "doing" });
+      }
+      await loadTasks();
+    } catch (e) {
+      setError(friendlyError(e.message));
     }
-    await loadTasks();
-  } catch (e) {
-    setError(e.message);
   }
-}
 
-async function setDoneForSelectedDate(task) {
-  if (!user) return;
-  try {
-    if (isRecurring(task)) {
-      // occurrence-only
-      await api.setOccurrenceStatus(task._id, selectedISO, "done");
-    } else {
-      await api.updateTask(task._id, { status: "done" });
+  async function setDoneForSelectedDate(task) {
+    if (!user) return;
+    try {
+      if (isRecurring(task)) {
+        await api.setOccurrenceStatus(task._id, selectedISO, "done");
+      } else {
+        await api.updateTask(task._id, { status: "done" });
+      }
+      await loadTasks();
+    } catch (e) {
+      setError(friendlyError(e.message));
     }
-    await loadTasks();
-  } catch (e) {
-    setError(e.message);
   }
-}
 
-async function clearStateForSelectedDate(task) {
-  // optional helper if you ever want to reset to todo
-  if (!user) return;
-  try {
-    if (isRecurring(task)) {
-      await api.setOccurrenceStatus(task._id, selectedISO, "todo");
-    } else {
-      await api.updateTask(task._id, { status: "todo" });
-    }
-    await loadTasks();
-  } catch (e) {
-    setError(e.message);
-  }
-}
-  // ✅ drag drop handler (moves base date)
   async function handleDragEnd(event) {
     const { active, over } = event;
-    if (!over) return;
-    if (!user) return;
-
+    if (!over || !user) return;
     const task = active.data.current?.task;
     const newDate = over.id;
-    if (!task || !newDate) return;
-
-    const oldDate = task.date;
-    if (oldDate === newDate) return;
-
+    if (!task || !newDate || task.date === newDate) return;
     try {
       await api.updateTask(task._id, { date: newDate });
       await loadTasks();
       setSelectedISO(newDate);
     } catch (e) {
-      console.error("Drag update failed:", e);
-      setError("Could not move task. Try again.");
+      setError(friendlyError(e.message));
     }
   }
 
   function selectSearchResult(task) {
     const todayISO = toISODate(new Date());
     const jumpISO = bestDateForTask(task, todayISO);
-
     setSelectedISO(jumpISO);
     setSearchOpen(false);
     setSearchQ("");
-
-    // open detail (you can remove this if you prefer just jumping)
     navigate(`/tasks/${task._id}`);
   }
 
+  // H6: filter badge count
+  const filtersActive =
+    (priorityFilter !== "all" ? 1 : 0) + (statusFilter !== "all" ? 1 : 0);
+
   return (
     <div className="page">
-      {/* ✅ Global search directly under navbar */}
+      {/* H6: Global search with ARIA */}
       <div className="globalSearchRow" ref={searchWrapRef}>
         <div className="searchWrapTop">
           <span className="searchIcon">🔎</span>
           <input
             className="searchInput"
             value={searchQ}
-            onChange={(e) => {
-              setSearchQ(e.target.value);
-              setSearchOpen(true);
-            }}
+            onChange={(e) => { setSearchQ(e.target.value); setSearchOpen(true); }}
             onFocus={() => setSearchOpen(true)}
-            placeholder="Search tasks..."
+            placeholder="Search by title or description…"
             disabled={!user}
+            role="combobox"
+            aria-expanded={searchOpen && searchQ.trim().length > 0}
+            aria-haspopup="listbox"
+            aria-label="Search tasks"
           />
         </div>
 
         {searchOpen && searchQ.trim() && user && (
-          <div className="searchDropdown">
+          <div className="searchDropdown" role="listbox">
             {searchMatches.length === 0 ? (
               <div className="searchEmpty">No matches</div>
             ) : (
@@ -383,20 +408,21 @@ async function clearStateForSelectedDate(task) {
                     key={t._id}
                     className="searchItem"
                     type="button"
+                    role="option"
                     onClick={() => selectSearchResult(t)}
                     title="Open task"
                   >
                     <div className="searchItemTitle">
                       <span className={`dot ${t.status}`} />
                       <span className="searchItemText">
-                        {t.title}
-                        {recurring ? " ⟳" : ""}
+                        {t.title}{recurring ? " ⟳" : ""}
                       </span>
                     </div>
                     <div className="searchItemMeta">
                       <span className="mutedText">{t.date}</span>
                       <span className="sep">•</span>
-                      <span className={`tag ${t.priority}`}>{t.priority}</span>
+                      {/* H2: "Medium" not "med" */}
+                      <span className={`tag ${t.priority}`}>{PRIORITY_LABEL[t.priority] || t.priority}</span>
                     </div>
                   </button>
                 );
@@ -417,15 +443,24 @@ async function clearStateForSelectedDate(task) {
           <h1>Calendar</h1>
           <p className="subtle">
             Click a date to view tasks. Drag a task chip onto another date to move it.
+            {user && <span> Press <kbd>N</kbd> to create a task.</span>}
           </p>
         </div>
-
         <button className="btn" onClick={handleCreateClick}>
           + Create Task
         </button>
       </div>
 
-      {error && <div className="error">{error}</div>}
+      {/* H9: Error with retry button */}
+      {error && (
+        <div className="error errorRow">
+          <span>{error}</span>
+          <button className="btn small secondary" onClick={loadTasks}>Try again</button>
+        </div>
+      )}
+
+      {/* H1: Loading spinner */}
+      {loading && <div className="spinnerWrap"><div className="spinner" aria-label="Loading tasks…" /></div>}
 
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
         <Calendar
@@ -441,16 +476,19 @@ async function clearStateForSelectedDate(task) {
         />
       </DndContext>
 
-      {/* ✅ Bottom stays strictly “tasks for selected date” */}
       <div className="listCard">
         <div className="listHeader">
           <h2>Tasks for {selectedISO}</h2>
-          <button className="btn secondary" onClick={() => setSelectedISO(toISODate(new Date()))}>
+          {/* H10: tooltip on Today button */}
+          <button
+            className="btn secondary"
+            onClick={() => setSelectedISO(toISODate(new Date()))}
+            title="Jump to today's date"
+          >
             Today
           </button>
         </div>
 
-        {/* Optional filters for the selected day only */}
         {user && (
           <div className="filtersRow">
             <select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)}>
@@ -470,24 +508,28 @@ async function clearStateForSelectedDate(task) {
             <button
               className="btn secondary small"
               type="button"
-              onClick={() => {
-                setPriorityFilter("all");
-                setStatusFilter("all");
-              }}
+              onClick={() => { setPriorityFilter("all"); setStatusFilter("all"); }}
             >
               Clear
             </button>
+
+            {/* H6: Active filter count badge */}
+            {filtersActive > 0 && (
+              <span className="filterBadge" title={`${filtersActive} filter(s) active`}>
+                {filtersActive}
+              </span>
+            )}
           </div>
         )}
 
         {!user ? (
           <div className="empty">
-            <p>You’re not logged in. Log in to see and create tasks.</p>
+            <p>You're not logged in. Log in to see and create tasks.</p>
             <button className="btn" onClick={() => navigate("/auth")}>Login / Sign up</button>
           </div>
         ) : filteredSelectedTasks.length === 0 ? (
           <div className="empty">
-            <p>No tasks for this date (or they’re filtered out).</p>
+            <p>No tasks for this date{filtersActive > 0 ? " (filters active)" : ""}.</p>
             <button className="btn" onClick={() => setModalOpen(true)}>Create one</button>
           </div>
         ) : (
@@ -500,56 +542,41 @@ async function clearStateForSelectedDate(task) {
                 <li key={t._id} className="taskRow">
                   <div className="taskMain" onClick={() => navigate(`/tasks/${t._id}`)}>
                     <div className="taskTitle">
-                      {/* Yellow doing circle */}
                       <button
                         type="button"
                         className={`stateDot ${st === "doing" ? "doing" : ""}`}
                         title="Mark as Doing"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDoingForSelectedDate(t);
-                        }}
+                        onClick={(e) => { e.stopPropagation(); setDoingForSelectedDate(t); }}
                         aria-label="Mark as doing"
                       />
-
-                      {/* Green done box */}
                       <button
                         type="button"
                         className={`stateCheck ${st === "done" ? "done" : ""}`}
                         title="Mark as Done"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDoneForSelectedDate(t);
-                        }}
+                        onClick={(e) => { e.stopPropagation(); setDoneForSelectedDate(t); }}
                         aria-label="Mark as done"
                       >
                         {st === "done" ? "✓" : ""}
                       </button>
-
-                      {/* Title styling */}
-                      <span
-                        className={[
-                          st === "done" ? "strike" : "",
-                          st === "doing" ? "lightTitle" : "",
-                        ].join(" ")}
-                      >
-                        {t.title}
-                        {recurring ? " ⟳" : ""}
+                      <span className={[st === "done" ? "strike" : "", st === "doing" ? "lightTitle" : ""].join(" ")}>
+                        {t.title}{recurring ? " ⟳" : ""}
                       </span>
                     </div>
 
                     <div className="taskMeta">
                       {t.time ? <span>{t.time}</span> : <span className="mutedText">No time</span>}
                       <span className="sep">•</span>
-                      <span className={`tag ${t.priority}`}>{t.priority}</span>
+                      {/* H2: "Medium" label + status icon */}
+                      <span className={`tag ${t.priority}`}>{PRIORITY_LABEL[t.priority] || t.priority}</span>
                       <span className="sep">•</span>
-                      <span className="mutedText">{st}</span>
+                      <span className="mutedText">{STATUS_ICON[st]} {st}</span>
                     </div>
                   </div>
 
                   <div className="taskActions">
                     <button className="btn small" onClick={() => navigate(`/tasks/${t._id}`)}>Open</button>
-                    <button className="btn small danger" onClick={() => quickDelete(t._id)}>Delete</button>
+                    {/* H3: no confirm dialog — undo toast instead */}
+                    <button className="btn small danger" onClick={() => quickDelete(t)}>Delete</button>
                   </div>
                 </li>
               );
@@ -560,10 +587,12 @@ async function clearStateForSelectedDate(task) {
 
       <TaskModal
         open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        onSubmit={(payload) => createTask({ ...payload, date: selectedISO })}
-        initial={{ date: selectedISO }}
-        dateLocked={true}
+        onClose={() => { setModalOpen(false); setModalFromNav(false); }}
+        onSubmit={(payload) =>
+          createTask(modalFromNav ? payload : { ...payload, date: selectedISO })
+        }
+        initial={modalFromNav ? {} : { date: selectedISO }}
+        dateLocked={!modalFromNav}
       />
     </div>
   );
