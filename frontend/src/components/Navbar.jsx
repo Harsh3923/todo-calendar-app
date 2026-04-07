@@ -1,8 +1,15 @@
 import React from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 
 export default function Navbar({ user, onLogout, onToggleTheme, theme }) {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  function navClass(path) {
+    return location.pathname === path
+      ? "btn secondary navActive"
+      : "btn secondary";
+  }
 
   return (
     <nav className="nav">
@@ -22,17 +29,19 @@ export default function Navbar({ user, onLogout, onToggleTheme, theme }) {
 
         {user ? (
           <>
-            <button className="btn secondary" onClick={() => navigate("/dashboard")}>
+            <button className={navClass("/dashboard")} onClick={() => navigate("/dashboard")}>
               Dashboard
             </button>
 
-            <button className="btn secondary" onClick={() => navigate("/completed")}>
+            <button className={navClass("/completed")} onClick={() => navigate("/completed")}>
               Completed
             </button>
 
             <button
               className="btn"
               onClick={() => navigate("/", { state: { openCreate: true } })}
+              title="Create a new task (or press N on the calendar page)"
+              aria-label="Create new task"
             >
               + Create Task
             </button>
