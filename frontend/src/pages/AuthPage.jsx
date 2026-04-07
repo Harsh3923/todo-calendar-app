@@ -1,6 +1,38 @@
 import React, { useEffect, useRef, useState } from "react";
 import { api } from "../api/client.js";
 
+/* ── H9: Friendly error messages ─────────────────────────── */
+function friendlyError(raw) {
+  const msg = (raw || "").toLowerCase();
+  if (msg.includes("user not found") || msg.includes("no account"))
+    return "No account with that email exists. Please sign up first.";
+  if (msg.includes("invalid password") || msg.includes("wrong password"))
+    return "Incorrect password. Please try again, or use Forgot password.";
+  if (msg.includes("already exists") || msg.includes("duplicate"))
+    return "An account with this email already exists. Try logging in instead.";
+  if (msg.includes("not verified"))
+    return "Your email isn't verified yet. Check your inbox for the verification code.";
+  if (msg.includes("expired") || msg.includes("invalid otp") || msg.includes("invalid code"))
+    return "The code is incorrect or has expired. Request a new one.";
+  if (msg.includes("network") || msg.includes("failed to fetch"))
+    return "Cannot reach the server. Check your connection and try again.";
+  if (msg.includes("unauthorized") || msg.includes("401"))
+    return "Your session has expired. Please log in again.";
+  return raw || "Something went wrong. Please try again.";
+}
+
+/* ── H5: Password strength meter ─────────────────────────── */
+function getPasswordStrength(pw) {
+  if (!pw) return { level: 0, label: "" };
+  let score = 0;
+  if (pw.length >= 6) score++;
+  if (pw.length >= 10) score++;
+  if (/[A-Z]/.test(pw) || /[0-9]/.test(pw)) score++;
+  if (/[^A-Za-z0-9]/.test(pw)) score++;
+  const labels = ["", "Weak", "Fair", "Good", "Strong"];
+  return { level: score, label: labels[score] };
+}
+
 /* ── 6-box OTP input ─────────────────────────────────────── */
 function OTPInput({ value, onChange, disabled }) {
   const inputs = useRef([]);
@@ -70,7 +102,12 @@ export default function AuthPage({ onSuccess }) {
   const [newPassword, setNewPassword] = useState("");
   const [confirmNew, setConfirmNew] = useState("");
 
-  const [msg, setMsg] = useState({ text: "", type: "error" }); // type: error | success
+  // H5: show/hide password toggles
+  const [showPw, setShowPw] = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
+  const [showNewPw, setShowNewPw] = useState(false);
+
+  const [msg, setMsg] = useState({ text: "", type: "error" });
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
 
@@ -82,6 +119,9 @@ export default function AuthPage({ onSuccess }) {
     setConfirmPassword("");
     setNewPassword("");
     setConfirmNew("");
+    setShowPw(false);
+    setShowConfirmPw(false);
+    setShowNewPw(false);
   }, [mode]);
 
   // Resend cooldown timer
@@ -92,7 +132,7 @@ export default function AuthPage({ onSuccess }) {
   }, [countdown]);
 
   function err(text) { setMsg({ text, type: "error" }); }
-  function ok(text) { setMsg({ text, type: "success" }); }
+  function ok(text)  { setMsg({ text, type: "success" }); }
 
   /* ── Login ── */
   async function submitLogin(e) {
@@ -104,9 +144,9 @@ export default function AuthPage({ onSuccess }) {
       onSuccess(res.token, res.user);
     } catch (e2) {
       if (e2.message?.includes("not verified")) {
-        err("Email not verified. ");
+        err("Your email isn't verified yet. Check your inbox for the verification code.");
       } else {
-        err(e2.message);
+        err(friendlyError(e2.message));
       }
     } finally {
       setLoading(false);
@@ -116,7 +156,7 @@ export default function AuthPage({ onSuccess }) {
   /* ── Register: send OTP ── */
   async function submitRegister(e) {
     e.preventDefault();
-    if (password !== confirmPassword) return err("Passwords do not match");
+    if (password !== confirmPassword) return err("Passwords do not match.");
     setLoading(true);
     setMsg({ text: "", type: "error" });
     try {
@@ -125,7 +165,7 @@ export default function AuthPage({ onSuccess }) {
       setCountdown(60);
       setMode("verify-signup");
     } catch (e2) {
-      err(e2.message);
+      err(friendlyError(e2.message));
     } finally {
       setLoading(false);
     }
@@ -134,14 +174,14 @@ export default function AuthPage({ onSuccess }) {
   /* ── Verify signup OTP ── */
   async function submitVerifySignup(e) {
     e.preventDefault();
-    if (otp.length < 6) return err("Enter the full 6-digit code");
+    if (otp.length < 6) return err("Enter the full 6-digit code.");
     setLoading(true);
     setMsg({ text: "", type: "error" });
     try {
       const res = await api.verifySignup(email, otp);
       onSuccess(res.token, res.user);
     } catch (e2) {
-      err(e2.message);
+      err(friendlyError(e2.message));
     } finally {
       setLoading(false);
     }
@@ -157,7 +197,7 @@ export default function AuthPage({ onSuccess }) {
       setOtp("");
       setCountdown(60);
     } catch (e2) {
-      err(e2.message);
+      err(friendlyError(e2.message));
     } finally {
       setLoading(false);
     }
@@ -174,7 +214,7 @@ export default function AuthPage({ onSuccess }) {
       setCountdown(60);
       setMode("reset");
     } catch (e2) {
-      err(e2.message);
+      err(friendlyError(e2.message));
     } finally {
       setLoading(false);
     }
@@ -183,9 +223,9 @@ export default function AuthPage({ onSuccess }) {
   /* ── Reset password ── */
   async function submitReset(e) {
     e.preventDefault();
-    if (otp.length < 6) return err("Enter the full 6-digit code");
-    if (newPassword !== confirmNew) return err("Passwords do not match");
-    if (newPassword.length < 6) return err("Password must be at least 6 characters");
+    if (otp.length < 6) return err("Enter the full 6-digit code.");
+    if (newPassword !== confirmNew) return err("Passwords do not match.");
+    if (newPassword.length < 6) return err("Password must be at least 6 characters.");
     setLoading(true);
     setMsg({ text: "", type: "error" });
     try {
@@ -193,7 +233,7 @@ export default function AuthPage({ onSuccess }) {
       ok("Password reset! You can now log in.");
       setTimeout(() => setMode("login"), 1800);
     } catch (e2) {
-      err(e2.message);
+      err(friendlyError(e2.message));
     } finally {
       setLoading(false);
     }
@@ -209,10 +249,27 @@ export default function AuthPage({ onSuccess }) {
       setOtp("");
       setCountdown(60);
     } catch (e2) {
-      err(e2.message);
+      err(friendlyError(e2.message));
     } finally {
       setLoading(false);
     }
+  }
+
+  /* ── H5: Password strength bar (register mode) ── */
+  function StrengthBar({ pw }) {
+    const { level, label } = getPasswordStrength(pw);
+    if (!pw) return null;
+    const segs = ["weak", "fair", "good", "strong"];
+    return (
+      <>
+        <div className="pwStrengthBar">
+          {segs.map((cls, i) => (
+            <div key={cls} className={`pwStrengthSeg ${i < level ? cls : ""}`} />
+          ))}
+        </div>
+        <div className="pwStrengthLabel">{label}</div>
+      </>
+    );
   }
 
   /* ── Render ── */
@@ -241,7 +298,20 @@ export default function AuthPage({ onSuccess }) {
               </label>
               <label>
                 Password
-                <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" required placeholder="••••••••" />
+                {/* H5: show/hide toggle */}
+                <div className="pwFieldWrap">
+                  <input
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    type={showPw ? "text" : "password"}
+                    required
+                    placeholder="••••••••"
+                  />
+                  <button type="button" className="pwToggleBtn" onClick={() => setShowPw((p) => !p)}
+                    aria-label={showPw ? "Hide password" : "Show password"}>
+                    {showPw ? "🙈" : "👁"}
+                  </button>
+                </div>
               </label>
 
               <button className="btn authBtn" type="submit" disabled={loading}>
@@ -264,6 +334,12 @@ export default function AuthPage({ onSuccess }) {
         {/* ── REGISTER ── */}
         {mode === "register" && (
           <>
+            {/* H3: Back arrow */}
+            <button className="linkBtn" style={{ alignSelf: "flex-start", fontSize: 15 }}
+              onClick={() => setMode("login")} aria-label="Back to login">
+              ← Back
+            </button>
+
             <div className="authHeader">
               <h1>Create account</h1>
               <p className="subtle">We'll send a code to verify your email</p>
@@ -278,11 +354,37 @@ export default function AuthPage({ onSuccess }) {
               </label>
               <label>
                 Password
-                <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" required placeholder="Min. 6 characters" />
+                <div className="pwFieldWrap">
+                  <input
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    type={showPw ? "text" : "password"}
+                    required
+                    placeholder="Min. 6 characters"
+                  />
+                  <button type="button" className="pwToggleBtn" onClick={() => setShowPw((p) => !p)}
+                    aria-label={showPw ? "Hide password" : "Show password"}>
+                    {showPw ? "🙈" : "👁"}
+                  </button>
+                </div>
+                {/* H5: Strength meter */}
+                <StrengthBar pw={password} />
               </label>
               <label>
                 Confirm password
-                <input value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} type="password" required placeholder="Re-enter password" />
+                <div className="pwFieldWrap">
+                  <input
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    type={showConfirmPw ? "text" : "password"}
+                    required
+                    placeholder="Re-enter password"
+                  />
+                  <button type="button" className="pwToggleBtn" onClick={() => setShowConfirmPw((p) => !p)}
+                    aria-label={showConfirmPw ? "Hide password" : "Show password"}>
+                    {showConfirmPw ? "🙈" : "👁"}
+                  </button>
+                </div>
               </label>
 
               <button className="btn authBtn" type="submit" disabled={loading}>
@@ -300,6 +402,12 @@ export default function AuthPage({ onSuccess }) {
         {/* ── VERIFY SIGNUP OTP ── */}
         {mode === "verify-signup" && (
           <>
+            {/* H3: Back arrow */}
+            <button className="linkBtn" style={{ alignSelf: "flex-start", fontSize: 15 }}
+              onClick={() => setMode("register")} aria-label="Back to registration">
+              ← Back
+            </button>
+
             <div className="authHeader">
               <h1>Verify your email</h1>
               <p className="subtle">
@@ -331,8 +439,6 @@ export default function AuthPage({ onSuccess }) {
                   Resend code
                 </button>
               )}
-              <span className="authDivider">·</span>
-              <button className="linkBtn" onClick={() => setMode("register")}>Go back</button>
             </div>
           </>
         )}
@@ -340,6 +446,12 @@ export default function AuthPage({ onSuccess }) {
         {/* ── FORGOT PASSWORD ── */}
         {mode === "forgot" && (
           <>
+            {/* H3: Back arrow */}
+            <button className="linkBtn" style={{ alignSelf: "flex-start", fontSize: 15 }}
+              onClick={() => setMode("login")} aria-label="Back to login">
+              ← Back
+            </button>
+
             <div className="authHeader">
               <h1>Forgot password?</h1>
               <p className="subtle">Enter your email and we'll send a reset code</p>
@@ -357,16 +469,18 @@ export default function AuthPage({ onSuccess }) {
                 {loading ? "Sending…" : "Send reset code"}
               </button>
             </form>
-
-            <div className="authLinks">
-              <button className="linkBtn" onClick={() => setMode("login")}>Back to login</button>
-            </div>
           </>
         )}
 
         {/* ── RESET PASSWORD ── */}
         {mode === "reset" && (
           <>
+            {/* H3: Back arrow */}
+            <button className="linkBtn" style={{ alignSelf: "flex-start", fontSize: 15 }}
+              onClick={() => setMode("forgot")} aria-label="Back">
+              ← Back
+            </button>
+
             <div className="authHeader">
               <h1>Reset password</h1>
               <p className="subtle">
@@ -387,11 +501,36 @@ export default function AuthPage({ onSuccess }) {
 
               <label>
                 New password
-                <input value={newPassword} onChange={(e) => setNewPassword(e.target.value)} type="password" required placeholder="Min. 6 characters" />
+                <div className="pwFieldWrap">
+                  <input
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    type={showNewPw ? "text" : "password"}
+                    required
+                    placeholder="Min. 6 characters"
+                  />
+                  <button type="button" className="pwToggleBtn" onClick={() => setShowNewPw((p) => !p)}
+                    aria-label={showNewPw ? "Hide password" : "Show password"}>
+                    {showNewPw ? "🙈" : "👁"}
+                  </button>
+                </div>
+                <StrengthBar pw={newPassword} />
               </label>
               <label>
                 Confirm new password
-                <input value={confirmNew} onChange={(e) => setConfirmNew(e.target.value)} type="password" required placeholder="Re-enter new password" />
+                <div className="pwFieldWrap">
+                  <input
+                    value={confirmNew}
+                    onChange={(e) => setConfirmNew(e.target.value)}
+                    type={showConfirmPw ? "text" : "password"}
+                    required
+                    placeholder="Re-enter new password"
+                  />
+                  <button type="button" className="pwToggleBtn" onClick={() => setShowConfirmPw((p) => !p)}
+                    aria-label={showConfirmPw ? "Hide password" : "Show password"}>
+                    {showConfirmPw ? "🙈" : "👁"}
+                  </button>
+                </div>
               </label>
 
               <button className="btn authBtn" type="submit" disabled={loading || otp.length < 6}>
@@ -407,8 +546,6 @@ export default function AuthPage({ onSuccess }) {
                   Resend code
                 </button>
               )}
-              <span className="authDivider">·</span>
-              <button className="linkBtn" onClick={() => setMode("forgot")}>Go back</button>
             </div>
           </>
         )}
