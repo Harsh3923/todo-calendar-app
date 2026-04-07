@@ -789,3 +789,229 @@ input:focus, textarea:focus, select:focus {
   margin: 10px 0 4px;
 }
 .filtersRow select { font-size: 13px; padding: 8px 10px; }
+
+/* ═══════════════════════════════════════════════════════════
+   NIELSEN USABILITY HEURISTICS — UI COMPLIANCE ADDITIONS
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── H1: CSS Spinner ─────────────────────────────────────── */
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(124,92,255,0.18);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  margin: 0 auto;
+  display: block;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.spinnerWrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px 0;
+}
+
+/* ── H1 / H3 / H9: Toast notifications ──────────────────── */
+.toastStack {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 340px;
+  max-width: calc(100vw - 48px);
+}
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  box-shadow: var(--shadow);
+  animation: toastIn 0.22s ease;
+  font-size: 14px;
+}
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.toast--success { border-color: rgba(34,197,94,0.35); background: rgba(34,197,94,0.08); }
+.toast--error   { border-color: rgba(255,80,120,0.35); background: rgba(255,80,120,0.08); }
+.toast--info    { border-color: rgba(124,92,255,0.35); }
+[data-theme="light"] .toast { background: var(--card); }
+[data-theme="light"] .toast--success { background: rgba(34,197,94,0.06); }
+[data-theme="light"] .toast--error   { background: rgba(255,80,120,0.06); }
+
+.toastMsg { flex: 1; color: var(--text); }
+.toastUndo {
+  background: rgba(255,255,255,0.12);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px 10px;
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 12px;
+  white-space: nowrap;
+  transition: background 120ms ease;
+}
+.toastUndo:hover { background: rgba(255,255,255,0.20); }
+[data-theme="light"] .toastUndo { background: rgba(0,0,0,0.06); }
+[data-theme="light"] .toastUndo:hover { background: rgba(0,0,0,0.12); }
+.toastClose {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 2px;
+  line-height: 1;
+}
+.toastClose:hover { color: var(--text); }
+
+/* ── H4: Active nav indicator ───────────────────────────── */
+.navActive {
+  background: rgba(124,92,255,0.18) !important;
+  border-color: rgba(124,92,255,0.40) !important;
+}
+[data-theme="light"] .navActive {
+  background: rgba(91,69,255,0.12) !important;
+  border-color: rgba(91,69,255,0.30) !important;
+}
+
+/* ── H6: Today cell highlight ───────────────────────────── */
+.calCell.today .calDayNum {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.calCell.today .calDayNum::after {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+
+/* ── H5: Password strength meter ────────────────────────── */
+.pwStrengthBar {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+}
+.pwStrengthSeg {
+  flex: 1;
+  height: 4px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.08);
+  transition: background 0.25s ease;
+}
+[data-theme="light"] .pwStrengthSeg { background: rgba(0,0,0,0.08); }
+.pwStrengthSeg.weak   { background: #ff4d6d; }
+.pwStrengthSeg.fair   { background: #ffd166; }
+.pwStrengthSeg.good   { background: #4dd4ff; }
+.pwStrengthSeg.strong { background: #22c55e; }
+.pwStrengthLabel {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 3px;
+  min-height: 14px;
+}
+
+/* ── H5: Show/hide password toggle ──────────────────────── */
+.pwFieldWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.pwFieldWrap input {
+  width: 100%;
+  padding-right: 42px !important;
+}
+.pwToggleBtn {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0;
+  line-height: 1;
+  z-index: 1;
+}
+.pwToggleBtn:hover { color: var(--text); }
+
+/* ── H5: Inline field validation ────────────────────────── */
+.fieldError {
+  font-size: 12px;
+  color: #ff4d6d;
+  margin-top: 3px;
+  display: block;
+}
+.inputError {
+  border-color: rgba(255,80,120,0.55) !important;
+  box-shadow: 0 0 0 3px rgba(255,80,120,0.10) !important;
+}
+.requiredStar {
+  color: #ff4d6d;
+  margin-left: 2px;
+}
+
+/* ── H6: Filter active badge ────────────────────────────── */
+.filterBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 900;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+/* ── H8: Dashboard section labels ───────────────────────── */
+.dashSectionLabel {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 22px 0 8px;
+}
+
+/* ── H10: Keyboard shortcut hint ────────────────────────── */
+kbd {
+  display: inline-block;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-family: monospace;
+  background: rgba(255,255,255,0.06);
+  color: var(--muted);
+}
+[data-theme="light"] kbd { background: rgba(0,0,0,0.05); }
+
+/* ── H9: Error state with retry ─────────────────────────── */
+.errorRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
