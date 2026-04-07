@@ -9,6 +9,7 @@ import TaskDetailPage from "./pages/TaskDetailPage.jsx";
 import { api, setToken, getToken } from "./api/client.js";
 import CompletedTasksPage from "./pages/CompletedTasksPage.jsx";
 import DashboardPage from "./pages/DashboardPage.jsx";
+import { ToastProvider } from "./components/Toast.jsx";
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -55,9 +56,14 @@ export default function App() {
     navigate("/");
   }
 
-  if (booting) return <div className="page"><p>Loading…</p></div>;
+  if (booting) return (
+    <div className="page">
+      <div className="spinnerWrap"><div className="spinner" aria-label="Loading…" /></div>
+    </div>
+  );
 
   return (
+    <ToastProvider>
     <div className="appShell">
       <Navbar
         user={user}
@@ -75,5 +81,6 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>
+    </ToastProvider>
   );
 }
