@@ -33,6 +33,8 @@ export default function Calendar({
   const startWeekday = first.getDay(); // 0=Sun
   const totalDays = last.getDate();
 
+  const todayISO = toISODate(new Date());
+
   const cells = [];
   for (let i = 0; i < startWeekday; i++) cells.push(null);
   for (let day = 1; day <= totalDays; day++) {
@@ -83,13 +85,14 @@ export default function Calendar({
 
           const iso = toISODate(d);
           const selected = iso === selectedISO;
+          const isToday = iso === todayISO;
           const list = tasksByDate[iso] || [];
 
           return (
             <DayCell
               key={idx}
               dayIso={iso}
-              className={selected ? "selected" : ""}
+              className={[selected ? "selected" : "", isToday ? "today" : ""].filter(Boolean).join(" ")}
               onClick={() => onSelectDate(iso)}
             >
               <div className="calDayNum">{d.getDate()}</div>
