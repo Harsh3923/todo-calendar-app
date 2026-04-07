@@ -9,24 +9,33 @@ function isoDay(d) {
   return dt.toISOString().slice(0, 10);
 }
 
+function friendlyError(raw) {
+  const msg = (raw || "").toLowerCase();
+  if (msg.includes("network") || msg.includes("failed to fetch"))
+    return "Cannot reach the server. Check your connection and try again.";
+  return raw || "Something went wrong. Please try again.";
+}
+
 export default function CompletedTasksPage({ user }) {
   const [tasks, setTasks] = useState([]);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     async function load() {
       setError("");
       if (!user) return;
-
+      setLoading(true);
       try {
-        const list = await api.listTasks(); // or api.listTasks(undefined) same
+        const list = await api.listTasks();
         const done = list.filter((t) => t.status === "done");
-        // sort by completedAt desc
         done.sort((a, b) => new Date(b.completedAt || 0) - new Date(a.completedAt || 0));
         setTasks(done);
       } catch (e) {
-        setError(e.message);
+        setError(friendlyError(e.message));
+      } finally {
+        setLoading(false);
       }
     }
     load();
@@ -53,6 +62,9 @@ export default function CompletedTasksPage({ user }) {
       </div>
 
       {error && <div className="error">{error}</div>}
+
+      {/* H1: spinner */}
+      {loading && <div className="spinnerWrap"><div className="spinner" aria-label="Loading…" /></div>}
 
       <div className="listCard">
         {tasks.length === 0 ? (
