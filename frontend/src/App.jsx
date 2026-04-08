@@ -7,6 +7,7 @@ import CalendarPage from "./pages/CalendarPage.jsx";
 import AuthPage from "./pages/AuthPage.jsx";
 import TaskDetailPage from "./pages/TaskDetailPage.jsx";
 import { api, setToken, getToken } from "./api/client.js";
+import { disconnectSocket } from "./socket.js";
 import CompletedTasksPage from "./pages/CompletedTasksPage.jsx";
 import DashboardPage from "./pages/DashboardPage.jsx";
 import { ToastProvider } from "./components/Toast.jsx";
@@ -51,6 +52,7 @@ export default function App() {
   }
 
   function logout() {
+    disconnectSocket();
     setToken(null);
     setUser(null);
     navigate("/");
