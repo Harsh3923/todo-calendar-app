@@ -7,6 +7,7 @@ import Calendar, { toISODate } from "../components/Calendar.jsx";
 import TaskModal from "../components/TaskModal.jsx";
 import { api } from "../api/client.js";
 import { useToast } from "../components/Toast.jsx";
+import { connectSocket } from "../socket.js";
 
 /* ── H9: Friendly error messages ─────────────────────────── */
 function friendlyError(raw) {
@@ -211,6 +212,33 @@ export default function CalendarPage({ user }) {
   useEffect(() => {
     loadTasks();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
+  // Real-time updates via Socket.io
+  useEffect(() => {
+    if (!user) return;
+    const socket = connectSocket();
+    if (!socket) return;
+
+    function onTaskCreated(task) {
+      setTasks((prev) => prev.find((t) => t._id === task._id) ? prev : [...prev, task]);
+    }
+    function onTaskUpdated(task) {
+      setTasks((prev) => prev.map((t) => t._id === task._id ? task : t));
+    }
+    function onTaskDeleted(taskId) {
+      setTasks((prev) => prev.filter((t) => t._id !== taskId));
+    }
+
+    socket.on("task:created", onTaskCreated);
+    socket.on("task:updated", onTaskUpdated);
+    socket.on("task:deleted", onTaskDeleted);
+
+    return () => {
+      socket.off("task:created", onTaskCreated);
+      socket.off("task:updated", onTaskUpdated);
+      socket.off("task:deleted", onTaskDeleted);
+    };
   }, [user]);
 
   const tasksByDate = useMemo(() => {
