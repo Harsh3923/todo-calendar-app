@@ -37,6 +37,7 @@ router.post("/", async (req, res, next) => {
       completedAt: status === "done" ? new Date() : null,
     });
 
+    req.app.get("io")?.to(`user:${req.user.id}`).emit("task:created", task);
     res.status(201).json(task);
   } catch (e) {
     next(e);
@@ -95,6 +96,7 @@ router.post("/:id/set-occurrence-status", async (req, res, next) => {
         task.completedAt = null;
       }
       await task.save();
+      req.app.get("io")?.to(`user:${req.user.id}`).emit("task:updated", task);
       return res.json(task);
     }
 
@@ -120,6 +122,7 @@ router.post("/:id/set-occurrence-status", async (req, res, next) => {
     task.completedDates = Array.from(doneSet).sort();
 
     await task.save();
+    req.app.get("io")?.to(`user:${req.user.id}`).emit("task:updated", task);
     res.json(task);
   } catch (e) {
     next(e);
@@ -148,6 +151,7 @@ router.post("/:id/toggle-complete", async (req, res, next) => {
         task.completedAt = new Date();
       }
       await task.save();
+      req.app.get("io")?.to(`user:${req.user.id}`).emit("task:updated", task);
       return res.json(task);
     }
 
@@ -158,6 +162,7 @@ router.post("/:id/toggle-complete", async (req, res, next) => {
 
     task.completedDates = Array.from(set).sort(); // keep it tidy
     await task.save();
+    req.app.get("io")?.to(`user:${req.user.id}`).emit("task:updated", task);
     res.json(task);
   } catch (e) {
     next(e);
@@ -199,6 +204,7 @@ router.put("/:id", async (req, res, next) => {
     Object.assign(task, allowed);
 
     const saved = await task.save();
+    req.app.get("io")?.to(`user:${req.user.id}`).emit("task:updated", saved);
     res.json(saved);
   } catch (e) {
     next(e);
@@ -210,6 +216,7 @@ router.delete("/:id", async (req, res, next) => {
   try {
     const deleted = await Task.findOneAndDelete({ _id: req.params.id, userId: req.user.id });
     if (!deleted) return res.status(404).json({ error: "Task not found" });
+    req.app.get("io")?.to(`user:${req.user.id}`).emit("task:deleted", req.params.id);
     res.json({ ok: true });
   } catch (e) {
     next(e);
