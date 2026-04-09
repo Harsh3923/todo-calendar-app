@@ -52,7 +52,7 @@ CLIENT_ORIGIN=http://localhost:5173
 ```bash
 cd backend
 npm install
-npm run dev
+npm run start
 ```
 
 The API and WebSocket server will start at `http://localhost:8080`.
